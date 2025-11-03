@@ -232,9 +232,9 @@ As we cannot use the default Lie algebra $aff$ from the Lie group $Aff^+$ as $V$
 
 
 
-See /* @kaji_concise_2016 */ where the authors describe a parameterization for $Aff^+(RR^3)$ that is suitable for our type of application.
-This parameterization starts from what is essentially the Lie algebra but constructs a different surjective mapping than the exponential onto the group (but still closely related).
-We simplify this parametrization to 2 dimensions.
+// See /* @kaji_concise_2016 */ where the authors describe a parameterization for $Aff^+(RR^3)$ that is suitable for our type of application.
+// This parameterization starts from what is essentially the Lie algebra but constructs a different surjective mapping than the exponential onto the group (but still closely related).
+// We simplify this parametrization to 2 dimensions.
 
 _Do not understand this, I thought the problem was that it was not surjective_
 #quote-box[The main issue with the exponential map /* @eq:affine-exp */ is that it is computationally demanding with no convenient closed formula.]
@@ -292,8 +292,6 @@ $
   &=
   mat(exp(s_1), 0; 0, exp(s_2))
 $
-where $a := 1/2 sqrt((s_1-s_2)^2 + 4 s_3^2)$.
-
 Note that $det(exp mat(0,-r; r,0)) = 1$ and $det(exp mat(s_1, s_3; s_3, s_2)) = e^(s_1+s_2) > 0$.
 
 
@@ -362,24 +360,16 @@ $L_"image" = lambda||f - hat(f)|| + (1 - lambda) * (1 - text("SSIM")(f, hat(f)))
 
 Besides the actual representation, we have two other things that we want to discourage. As gradient descent tries to find the minimum of the loss, we can put things in the loss to discourage certain behavior. First of all, we want to limit the anisotropy, to make sure gaussians do not become stretched out, but stay fairly round. This will prevent artifacts and overfitting. Futhermore, we also do not want gaussians too become too small, to be exact they must not be smaller than a pixel, as this will make them hidden while rendering, but they still contain information. 
 
-We will add two extra components to the loss function, one for the sizing and one for the anisotropy. They are defined as following.
-
-$
-  L_"anisotropy" = overline(|s_1 + s_2|) * lambda_"anisotropy"
-$
-
+We will add two extra components to the loss function, one for the sizing and one for the anisotropy. They are defined as 
+$L_"anisotropy" = overline(|s_1 + s_2|) * lambda_"anisotropy"$
 and 
+$L_"sizing" = overline(exp( -(s_1 + s_2) -8)) * lambda_"sizing"$. Where $lambda_"anisotropy"$ and $lambda_"sizing"$ are how much influence these loss functions have. 
 
-$
-  L_"sizing" = overline(exp( -(s_1 + s_2) -8)) * lambda_"sizing"
-$
-
+The final loss is then defined as $L = L_"image" + L_"anisotropy" + L_"sizing"$
 
 
 
-
-
-As $RR^2 times RR times RR^3$ are all fully continuous we can use gradient descent to optimize this. 
+As $RR^2 times RR times RR^3$ are all vector spaces and the loss function is continuous we can use gradient descent to optimize this. We will use AdamW and a scheduler to futher optimize the trainig process.
 
 $G = "Aff"^+ (2)$
 
@@ -395,7 +385,9 @@ then
 $exp(X) = mat(cos(b), sin(b);
 - sin(b), cos(b))$
 
-==
+== Culling
+As we want to decrease the amount of gaussians that we save, we will culling the gaussians based on their parameters. The most obvious is that we would like to remove gaussians where the color values are negligible small for all gaussian layers. Formalized by 
+$ c_i $
 
 
 // The template uses #link("https://typst.app/universe/package/i-figured/")[`i-figured`] for labeling equations. Equations will be numbered only if they are labelled. Here is an equation with a label:
