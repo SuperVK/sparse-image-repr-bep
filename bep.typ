@@ -123,7 +123,7 @@ $
 $
 for all $(x_2,A_2), (x_1, A_1) in Aff^+(RR^2)$.
 ]
-Where $GL^+(RR^2)$ is the group of 2-dimensional real linear transformations with positive determinants, i.e. $2 times 2$ matrices with positive determinant.
+Where $GL^+(RR^2)$ is the group of 2-dimensional real linear transformations with positive determinants, i.e. $2 times 2$ matrices with positive determinant. This positive determinants ensures that the transformation does not flip the image, as the gaussians and their derivatives are symmetric, this is not needed.
 
 #todo-box[
   What are the unit element and the inverse?
@@ -192,39 +192,42 @@ To solve this issue, we will make use of the Lie algebra. This is the tangent sp
 The Lie algebra of $Aff^+(RR^2)$ is $aff(RR^2) := RR^2 times.r gl(RR^2) equiv RR^2 times.r RR^(2 times 2)$.
 Note that we say $aff$ and not $aff^+$, this is because $aff$ is the Lie algebra of both the $Aff^+$ and $Aff$ Lie groups, illustrating that there is not a one-to-one relationship between Lie groups and Lie algebras.
 
-_Relevancy of the following is not directly clear to me_
-#quote-box[
-As explained, $aff$ is now a vector space, i.e. $aff(RR^2) tilde.equiv RR^6$.
-In addition to being a vector space it is equipped with an anti-symmetric bilinear map called the _Lie bracket_, which in the case of $aff(RR^2) equiv RR^2 times.r RR^(2 times 2)$ is given by
+The lie algebra $aff$ can be represented by the linear transformation $W$ and a translation $v$ seperately. Or they can be put together in one matrix, as 
+
 $
-[(v_1,W_1),(v_2,W_2)] :=  (W_1 v_2 - W_2 v_1,[W_1,W_2]) = (W_1 v_2 - W_2 v_1, W_1 W_2 - W_2 W_1)
-.
+  A = mat(
+    W, v;
+    0, 0
+  )
 $
-The Lie bracket is essentially a measure of the non-commutativity of the Lie group, for a commutative Lie group the Lie bracket of its Lie algebra is always zero.
-]
+
+// _Relevancy of the following is not directly clear to me_
+// -> In principe nog niet direct relevant
+// #quote-box[
+// As explained, $aff$ is now a vector space, i.e. $aff(RR^2) tilde.equiv RR^6$.
+// In addition to being a vector space it is equipped with an anti-symmetric bilinear map called the _Lie bracket_, which in the case of $aff(RR^2) equiv RR^2 times.r RR^(2 times 2)$ is given by
+// $
+// [(v_1,W_1),(v_2,W_2)] :=  (W_1 v_2 - W_2 v_1,[W_1,W_2]) = (W_1 v_2 - W_2 v_1, W_1 W_2 - W_2 W_1)
+// .
+// $
+// The Lie bracket is essentially a measure of the non-commutativity of the Lie group, for a commutative Lie group the Lie bracket of its Lie algebra is always zero.
+// ]
 
 === The exponential & logarithmic map
 
-_The following is a bit unclear to me, especially where the definition of the exponential map comes from_
-#quote-box[
+// _The following is a bit unclear to me, especially where the definition of the exponential map comes from_ -> kijk naar boek van Hall
+// #quote-box[
 Lie groups and Lie algebras are related to each other through the _exponential map_.
-For our case the exponential map $exp_(Aff^+(RR^2)) : aff(RR^2) -> Aff^+(RR^2)$ is given by
-$
+For our case the exponential map $exp_(Aff^+(RR^2)) : aff(RR^2) -> Aff^+(RR^2)$ is given by $exp(A)$.
+
+Doing this for $W$ and $v$ seperately is equivalent to $
 exp( (v,W) )
 :=
 ( (integral_0^1 e^(t W) dif t) v, e^W ).
 $<eq:affine-exp>
-Since matrix exponentiation $W mapsto e^W:RR^(2 times 2) -> GL^+(RR^2)$ is surjective onto $GL^+(RR^2)$ /* @culver1966existence */ it follows that the linear part of /* @eq:affine-exp */ is surjective.
-For the same reason $integral_0^1 e^(t W) dif t in GL^+(RR^2)$ (a weighted sum of positive-definite matrices is a positive-definite matrix) and so for any $w in RR^2$ we can find a $v in RR^2$ to solve the linear system
-$
-(integral_0^1 e^(t W) dif t) v = w.
-$
-Consequently, the affine exponential map /* @eq:affine-exp */ is surjective onto $Aff^+(RR^2)$.
-However it is not injective since matrix exponentiation is not injective.
 
-Being surjective but non-injective allows us to find a right-inverse of the exponential, but this inverse is not unique.
-We call such an inverse of the exponential a _logarithm_, i.e. a $log_(Aff^+(RR^2)): Aff^+(RR^2) -> aff(RR^2)$ so that $exp compose log = id_(Aff^+(RR^2))$ though not necessarily the other way around.
-]
+Unfortunately, from @culver1966existence we know that matrix multiplication is not surjective. So we cannot use $aff$ to create every possible gaussian. Besides the fact that is not surjective, is the integral also a problem. This means that the function is not a convenient close formula, but instead requires a lot of computation.
+
 
 == Kaji-Ochiai parameterization
 
@@ -235,9 +238,6 @@ As we cannot use the default Lie algebra $aff$ from the Lie group $Aff^+$ as $V$
 // See /* @kaji_concise_2016 */ where the authors describe a parameterization for $Aff^+(RR^3)$ that is suitable for our type of application.
 // This parameterization starts from what is essentially the Lie algebra but constructs a different surjective mapping than the exponential onto the group (but still closely related).
 // We simplify this parametrization to 2 dimensions.
-
-_Do not understand this, I thought the problem was that it was not surjective_
-#quote-box[The main issue with the exponential map /* @eq:affine-exp */ is that it is computationally demanding with no convenient closed formula.]
 
 
 The Kaij-Ochiai parameterization works by factoring the Lie algebra of $Aff^+(RR^2)$ as per
@@ -266,6 +266,14 @@ $
 symm(2) = { mat(s_1, s_3; s_3, s_2) mid(|) s_1,s_2,s_3 in RR }
 .
 $
+
+// Rotational symmtry
+
+// Dit is mogelijk om te laten zien dat dit werkt door te laten zien dat de Affine groep gemaakt kan worden door (x,y) x exp(rotationmatrix)*exp((s_1, 0; 0, s_2))
+
+// Aff+(2) / Stab(phi) -> R^2 x SPD(2)
+
+// Als we de shearing weghalen, kunnen we dan nog alle gaussians rendering -> als we de shearing weghalen, kunnen we dan nog RR^2 x SPD(2) genereren. 
 
 Disecting the degrees of freedom, we see that $s_1$ and $s_2$ determine the scaling in each axis. And $s_3$ determines skew. As the gaussian is symmetric in all axis, skew can also be generated by scaling and rotation, making this parameter obsolete. The first and second order gaussians are not symmetric is all axis, so skew does add an unique property here. However, this is removed to be able to analyze the gaussians more effectively in the loss and culling. This will be explained later. We except the removal of skew does not have a big impact. This result in
 
