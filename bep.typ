@@ -92,14 +92,24 @@ In the last few years, AI and machine learning has become increasingly important
 = Method
 We will adapt the 2D gaussian splatting to include extra secondary data. This is the geometric concepts of the image, such as the rotation, scaling and translation. And we will try to incorporate higher frequency data  of the image by using derivatives of the gaussian to be better able to plot edges and lines.
 
-We will spawn $n$ initial gaussians, which will represent one token, and each token will have 7 parameters that describes the color values of the gaussian layers and the location, rotation and scale. 
+We will spawn $n$ initial gaussians, which will represent one token, and each token will have $p$ (tbd) parameters that describes the color values of the gaussian layers and the location, rotation and scale. 
 
 == Gaussian layers
-Instead of using just the gaussian function as is usual in gaussian splatting, we will also use the first and second order derivative of the gaussian function. This will give us more complex features to work with. These three gaussians will be layered in the same location. It does not matter in which dimension we take the derivative, as the result will be perpendicular symmetries of each other. Below we can see the derivatives when they are unscaled. 
+Instead of using just the gaussian function as is usual in gaussian splatting, we will also use the first and second order derivative of the gaussian function. As defined as
+
+$
+ phi_0(x) := e^(-||x||) \
+ hat(phi)_1 = (dif) / (dif x_1) phi_0 \
+ hat(phi)_2 = (dif) / (dif x_1) phi_1 
+$
+
+Please note that the chose of variable ($x_1$ or $x_2$) for the derivative does not matter, as the axis are orthogonal and the function can be rotated by $90 deg$ to get the other derivative.
+
+This will give us more complex features to work with. These three gaussians will be layered in the same location. Below we can see the derivatives when they are unscaled. 
 #figure(
   image("./images/gaussian_derivatives_unscaled.png", width: 50%),
   caption: [
-    Unscaled gaussian, first-order derivative and second-order derivative of a gaussian.
+    Unscaled: gaussian ($phi_0$), first-order derivative ($hat(phi)_1$) and second-order derivative ($hat(phi)_2$) of a gaussian.
   ],
 )
 
@@ -110,11 +120,11 @@ Layering these as is will not result in a good overlap however, because the supp
 #figure(
   image("./images/gaussian_derivatives_scaled.png", width: 50%),
   caption: [
-    Scaled gaussian, first-order derivative and second-order derivative of a gaussian.
+    Scaled: gaussian ($phi_0$), first-order derivative ($phi_1$) and second-order derivative ($phi_2$) of a gaussian.
   ],
 )
 
-Each of these gaussians have an independent color values. Where each color value is not directly the color that the gaussian attains, but rather a push in a certain direction for the final color. For each pixel color $p c in [0,1]^3$, we start with a default of $0.5$. This has the advantage that the image is color invertible by multiplying all the color values by $-1$, but also does not introduce an implicit bias to the color black, as opposed to white (or vice versa). Therefor the color values of the gaussians can attain any value in $RR$, however, most likely they will be pushed between $[-0.5, 0.5]^3$ as  the input image contains only values between $[0, 1]^3$. This will be elaborated on later.
+Each of these gaussians have an independent color values. $c^(i,j)$, $i$ for each the gaussian layers, and $j$ for the color channels, totalling 9 values. Each color value is not directly the color that the gaussian attains, but rather a addition or substraction in a certain direction for the final color. For each pixel color $p c in [0,1]^3$, we start with a default of $0.5$. This has the advantage that the image is color invertible by multiplying all the color values by $-1$, but also does not introduce an implicit bias to the color black, as opposed to white (or vice versa). Therefor the color values of the gaussians can attain any value in $RR$, however, most likely they will be pushed between $[-0.5, 0.5]^3$ as  the input image contains only values between $[0, 1]^3$. This will be elaborated on later.
 
 == Lie groups
 This component for position, rotation and scale should ideally be a lie group. As this means our representation has geometric properties. 
@@ -133,7 +143,7 @@ $
 $
 for all $(x_2,A_2), (x_1, A_1) in Aff^+(RR^2)$.
 ]
-Where $GL^+(RR^2)$ is the group of 2-dimensional real linear transformations with positive determinants, i.e. $2 times 2$ matrices with positive determinant. This positive determinants ensures that the transformation does not flip the image, as the gaussians and their derivatives are symmetric, this is not needed.
+Where $GL^+(RR^2)$ is the group of 2-dimensional real linear transformations with positive determinants, i.e. $2 times 2$ matrices with positive determinant. This positive determinants ensures that the transformation does not flip the image, as the gaussians and their derivatives are symmetric, this is not needed, and only confuses.
 
 #todo-box[
   What are the unit element and the inverse?
@@ -143,7 +153,7 @@ Where $GL^+(RR^2)$ is the group of 2-dimensional real linear transformations wit
   Prove $Aff^+(RR^2)$ is a _Lie group_.
 ]
 
-The affine group _acts_ on $RR^2$ in the following manner:
+The affine group acts on $RR^2$ in the following manner:
 $
 g act y = (x,A) act y := A y + x
 $
@@ -191,7 +201,7 @@ $
 
 
 === Lie groups & parameter space
-This works quite well for positioning the gaussians at once. However, to make this match our target image, we will use gradient descent, as will be explained later. This requires the parameters to be a vector space. This is not the case by default for the Lie group. This means that when applying gradient descent at the current stage, the parameters could no longer be in the Lie group after gradient descent steps. This means that this parameter has no longer any useful meaning, and cannot be used to position the gaussian. 
+This works quite well for positioning the gaussians in some particular spot. However, to make this match our target image, we will use gradient descent, as will be explained later. This requires the parameters to be a vector space. This is not the case by default for the Lie group. This means that when applying gradient descent at the current stage, the parameters could no longer be in the Lie group after gradient descent steps. This means that this parameter has no longer any useful meaning, and cannot be used to position the gaussian. 
 
 For this reason, we will search for a parameter space, $V$, such that $V$ is a vector space, and there exists a surjective function $psi : V -> G$. We can use this to apply gradient descent on $V$, as this is a vector space, and render the image using $G$. 
 
@@ -227,7 +237,7 @@ $
 
 // _The following is a bit unclear to me, especially where the definition of the exponential map comes from_ -> kijk naar boek van Hall
 // #quote-box[
-Lie groups and Lie algebras are related to each other through the _exponential map_.
+Lie groups and Lie algebras are related to each other through the exponential map.
 For our case the exponential map $exp_(Aff^+(RR^2)) : aff(RR^2) -> Aff^+(RR^2)$ is given by $exp(A)$.
 
 Doing this for $W$ and $v$ seperately is equivalent to $
@@ -241,7 +251,7 @@ Unfortunately, from @culver1966existence we know that matrix multiplication is n
 
 == Kaji-Ochiai parameterization
 
-As we cannot use the default Lie algebra $aff$ from the Lie group $Aff^+$ as $V$, we will need to look to a bit further. We adapt the findings from @kaji_concise_2016, where they describe a parameterization for $Aff^+(RR^3)$. This parameterization is for 3D affine transformation, it starts from what is essentially the Lie algebra but constructs a different surjective mapping than the exponential onto the group (but still closely related). We will simplify this parametrization to 2 dimensions. 
+As we cannot use the default Lie algebra $aff$ from the Lie group $Aff^+$ as $V$, we will need to look to a bit further. We adapt the findings from @kaji_concise_2016, where they describe a parameterization for $Aff^+(RR^3)$, which has a similiar roles as the Lie algebra. This parameterization is for 3D affine transformation, it starts from what is essentially the Lie algebra but constructs a different surjective mapping than the exponential onto the group (but still closely related). We will simplify this parametrization to 2 dimensions. 
 
 
 
@@ -285,14 +295,11 @@ $
 
 // Als we de shearing weghalen, kunnen we dan nog alle gaussians rendering -> als we de shearing weghalen, kunnen we dan nog RR^2 x SPD(2) genereren. 
 
-Disecting the degrees of freedom, we see that $s_1$ and $s_2$ determine the scaling in each axis. And $s_3$ determines shear. As the gaussian is rotationally symmetric, shear can also be generated by scaling and rotation (proof?), making this parameter obsolete. The first and second order gaussians are not rotationally symmetric, so shear does add an unique property here.
 
-Removing this property gives us some better analysis on the anisotropy of a gaussian, so this would be preferred. However we will need to do some experiments if the shear property has significant impact on the first and second derivative.  
-
-This would result in
-$
-  { mat(s_1, 0; 0, s_2) mid(|) s_1,s_2 in RR }
-$
+// This would result in
+// $
+//   { mat(s_1, 0; 0, s_2) mid(|) s_1,s_2 in RR }
+// $
 
 #definition()[
 The parametrization map $phi: RR^2 times RR times RR^3 -> Aff^+(RR^2)$ is given by
@@ -303,19 +310,21 @@ $<eq:parametrization-map>
 
 The matrix exponentials in the parametrization map @eq:parametrization-map  have the following closed formulae
 $
+  exp_symm = 
   exp mat(0,-r; r,0)
   =
   mat(cos r, -sin r; sin r, cos r)
 $
 and
-$
-  exp mat(s_1, 0; 0, s_2)
-  &=
-  mat(exp(s_1), 0; 0, exp(s_2))
-$
+// $
+//   exp mat(s_1, 0; 0, s_2)
+//   &=
+//   mat(exp(s_1), 0; 0, exp(s_2))
+// $
 
-or including the shearing
+// or including the shearing
 $
+  exp_so = 
   exp mat(s_1, s_3; s_3, s_2)
   &=
   e^((s_1+s_2)/2)
@@ -336,9 +345,7 @@ where $a := 1/2 sqrt((s_1-s_2)^2 + 4 s_3^2)$.
 Note that $det(exp mat(0,-r; r,0)) = 1$ and $det(exp mat(s_1, s_3; s_3, s_2)) = e^(s_1+s_2) > 0$.
 
 
-_I think this is relevant for gradient descent_
-#quote-box[
-
+Furthermore, we can also look at the inverse of the parameterization.
 #definition()[
 A locally differentiable inverse $arrow.l(phi): Aff^+(RR^2) -> RR^2 times so(2) times symm(2)$ is given by
 $
@@ -381,25 +388,119 @@ s_3 = e^(-(s_1+s_2)/2) a / sinh(a) S_(2,1)
 .
 $
 ]
-]
+
+
+== A note on shearing
+Shearing is the changing the angle of the orthogonal base vectors of the space. No shearing implies that $e_1^T e_2 = 0$. This shearing can have some interesting properties, so we will take a closer look to see if we want this or if we want to exclude this from the Gaussian transformations.
+
+Disecting the polar decomposition from earlier, we can see that $R in SO(2)$ and thus does rotation, and $S in SPD(2)$ does scaling and this shearing. 
+
+We define $S$ as 
+$
+  S = mat(s_1, s_3; s_3, s_2)
+$.
+
+Then we can see that $s_3$ generates shearing, as when $s_3 = 0$ then we have $(S e_1)^T (S e_2) = (s_1, 0)^T (0, s_2) = 0$. And vice versa, if $s_3$ is variable, then $S e_1)^T (S e_2) = (s_1, s_3)^T (s_3, s_2) = s_1 s_3 + s_3 s_2$, clearly introducing a shear.
+
+Futhermore, we can see that the effect of a shear on a Gaussian can also be generated by a rotation and a scale. I.e. we can remove $s_3$ and still generate all Gaussian configurations.
+
+_Proof:_
+
+First, we know that any $S in SPD(2)$ can be generated by $R in SO(2)$ and $hat(S) in D$ where $D$ is all diagonal matrices. This is an eigendecomposition, defined as the following $S = R^T hat(S) R$.
+
+Then we also notice that rotation in the Stabilizer of $phi_0$. I.e.
+$
+  "Stab"_G (phi_0) := { g in G | g act phi_0 = phi_0 } equiv SO(2)
+$
+
+This means that we get the following
+
+$
+  S act phi_0 = R^T hat(S) R act phi_0 = R^T hat(S) act (R act phi_0) = R^T hat(S) act phi_0
+$
+
+Then we will show that first scaling and then rotating does not result in shearing.
+
+We will take the basis of the space $e_1$ and $e_2$, these are orthogonal if their inner product is zero. We know the basis is orthogonal by definition, thus $e_1^T e_2 = 0$
+
+We can see that any transformation $A = R S$ with 
+$
+  R = mat(cos r, - sin r; sin r, cos r)
+$ 
+and
+$
+  S = mat(exp(s 1), 0; 0, exp(s 2))
+$
+applied as $R S x$ results in an orthogonal "space"(not sure what the correct word is here). 
+
+We can see this by
+$
+  (A e_1)^T (A e_2) &= (R S e_1)^T (R S e_2)\
+  &= e_1^T S^T R^T R S e_2\
+  &= e_1^T S^T S e_2 & "As R is orthogonal"  \
+  &= (s_1, 0)^T (0, s_2)\
+  &= 0
+
+  
+$.
+
+It is also true that applying $S R x$ in the other order can result in shearing, we will show this with an counter example.
+
+Define 
+$
+  S = mat(1, 0; 0, 2)\
+$
+and
+$
+  R = mat(sqrt(2)/2, sqrt(2)/2; -sqrt(2)/2, sqrt(2)/2)
+$.
+
+Now clearly 
+$(S R e_1)^T (S R e_2) = - 3/2 != 0$
+
+$qed$
+
+And thus we can see that $phi_0$ is not affected by shearing. 
+
+
+// To remove the shear, we can remove the shearing parameter in G, this will result in the group homomorphism $G \\ SO(2)$. 
+
+We can remove the shearing by setting $s 3 = 0$ in the parameter space $V$. Furthermore, from the proof we can also see that we multiply the $exp_so$ with $exp_symm$ instead of the otherway around, i.e. applying the scaling before the rotation. This is currently already the case, in the parametrization of Kaij-Ochiai.
+
+Now that we have fixed $s 3=0$, we can see that $V equiv RR^5$. We can still map this using $psi$, however this will no longer map to $Aff^+$, but a subset of that where there exists no shearing. This subset is not a group.
+
+_Proof:_
+
+Take $R$ and $S$, which are each clearly in this subset that contains no shearing. However as we showed before, $S R$ does contain shearing. 
+Thus not in this subset, therefore the subset is not a group.
+
+$qed$
+
+// This results in the positive semi-definite scaling matrix $S$ being applied before the orthogonal rotational matrix $R$.
+
+The first and second order Gaussians are not rotationally symmetric, so shear does add an unique property here.
+
+However, emoving this property gives us some better analysis on the anisotropy#footnote[Anisotropy is how "stretched" an ellipsoid, or in our case a Gaussian, is. We will see later why this is useful] of a Gaussian, as the anisotropy is now uniquely generated by the scaling parameters. However we will need to do some experiments if the shear property has significant impact on the first and second derivative. 
 
 == Rendering function
 For $x in RR^2$ the Gaussian value is defined as $phi(x) = exp(-norm(x))$.
 
-The target image we want to approximate is defined as $f(x) : RR -> RR^2$.
+The target image we want to approximate is defined as $f(x) : RR^2 -> RR^3$.
 
 The final image that is generated from the parameters is defined by
 
 $
-hat(f)(x) = sum_(i = 0)^n c_i (g_i act phi.alt)(x) = sum_(i = 0)^n c_i (psi(v_i) act phi)(x)
+hat(f)(x) = sum_(k = 0)^n sum_(i)^3 c_k^(i) (g_k act phi.alt)(x) = sum_(k = 0)^n sum_(i)^3 c_k^(i) (psi(v_k) act phi)(x)
 $
+
+// Where $c equiv RR^9$ and $v equiv RR^5$ or $v equiv RR^6$ depending on the inclusion of the shearing parameter 
 
 // The group actions are defined by for $g in Aff^+(2), y in RR^2$ then $g act y = (A, x) act y := A y+ x$
 
-To find the optimal parameters $c_i$ and $v_i$, we will use gradient descent as explained earlier. For this, we will define a score that determines how well a set of parameters represents the image. We will use two methods to measure how well a representation is. First of all, we will use the $L_1$ norm, in practice, this is the pixel-by-pixel difference of each color channel. Formally defined as $||f-hat(f)||$. Besides this we will also use the structural similarity index measure (SSIM). These will be weighed with $lambda$. The total loss for how well the image looks will be
+To find the optimal parameters $c$ and $v$, we will use gradient descent as explained earlier. For this, we will define a score, called a loss, that determines how well a set of parameters represents the image. We will use two methods to measure how well a representation is. First of all, we will use the $L_1$ norm, in practice, this is the pixel-by-pixel difference of each color channel. Formally defined as $||f-hat(f)||$. Besides this we will also use the structural similarity index measure (SSIM). These will be weighed with $lambda$. The total loss for how well the image looks will be
 $L_"image" = lambda||f - hat(f)|| + (1 - lambda) * (1 - text("SSIM")(f, hat(f))) $.
 
-Besides the actual representation, we have two other things that we want to discourage. As gradient descent tries to find the minimum of the loss, we can put things in the loss to discourage certain behavior. First of all, we want to limit the anisotropy, to make sure gaussians do not become stretched out, but stay fairly round. This will prevent artifacts and overfitting. Futhermore, we also do not want gaussians too become too small, to be exact they must not be smaller than a pixel, as this will make them hidden while rendering, but they still contain information. 
+Besides the actual representation, we have two other things that we want to discourage. As gradient descent tries to find the minimum of the loss, we can put things in the loss to discourage certain behavior. First of all, we want to limit the anisotropy, to make sure gaussians do not become stretched out, but stay fairly round. This will prevent artifacts and overfitting. Futhermore, we also do not want gaussians to become too small, to be exact they must not be smaller than a pixel, as this will make them hidden while rendering, but they still contain information in the final embedding. 
 
 We will add two extra components to the loss function, one for the sizing and one for the anisotropy. They are defined as 
 $L_"anisotropy" = overline(|s_1 + s_2|) * lambda_"anisotropy"$
@@ -412,23 +513,32 @@ The final loss is then defined as $L = L_"image" + L_"anisotropy" + L_"sizing"$
 
 As $RR^2 times RR times RR^3$ are all vector spaces and the loss function is continuous we can use gradient descent to optimize this. We will use AdamW and a scheduler to futher optimize the trainig process.
 
-$G = "Aff"^+ (2)$
+// $G = "Aff"^+ (2)$
 
-$psi : V -> G$
+// $psi : V -> G$
 
-$psi(L, X, Y) = (L, exp(X) exp(Y))$
+// $psi(L, X, Y) = (L, exp(X) exp(Y))$
 
-$X = mat(0, b;
-- b, 0)$
+// $X = mat(0, b;
+// - b, 0)$
 
-then 
+// then 
 
-$exp(X) = mat(cos(b), sin(b);
-- sin(b), cos(b))$
+// $exp(X) = mat(cos(b), sin(b);
+// - sin(b), cos(b))$
 
 == Culling
-As we want to decrease the amount of gaussians that we save, we will culling the gaussians based on their parameters. The most obvious is that we would like to remove gaussians where the color values are negligible small for all gaussian layers. Formalized by 
-$ c_i $
+As we want to decrease the amount of gaussians that we save, we will remove the gaussians based on their parameters, this process we will call culling. The most obvious is that we would like to remove gaussians where the color values are negligible small for all gaussian layers. Formalized by 
+$
+sum_j^3 c^(1,j) <= 0.05 and sum_j^3 c^(2,j) <= 0.05 and sum_j^3 c^(3,j) <= 0.05
+$.
+
+The other criterion is again the anisotropy of the gaussian, as mentioned earlier. Formally, we do this by removing all gaussians where
+$
+  s 1 + s 2 <= 7.5
+$.
+
+The problem is that these gaussians are visible, so doing this culling after all training is done, would leave some gaps in the image. Therefore we do this on 80% of the training, thus giving the gradient descent still some iterations to recover and fill the gaps.
 
 
 // The template uses #link("https://typst.app/universe/package/i-figured/")[`i-figured`] for labeling equations. Equations will be numbered only if they are labelled. Here is an equation with a label:
@@ -498,7 +608,7 @@ $ c_i $
 
 // If you have appendices, you can add them after `#show: appendices`. The appendices are started with an empty heading `=` and will be numbered alphabetically. Any appendix can also have different subsections.
 
-== Appendix section
+= Appendix section
 
 #lorem(100)
 
