@@ -540,6 +540,64 @@ $.
 
 The problem is that these gaussians are visible, so doing this culling after all training is done, would leave some gaps in the image. Therefore we do this on 80% of the training, thus giving the gradient descent still some iterations to recover and fill the gaps.
 
+= Results
+To put this into practise, we use pytorch to make use of CUDA kernels and speed up the rendering. The source code is available at (). The images are constrained to 1:1 to ease the implementation, the theory can be easily scaled to any ratio.The resolution can differ, and based on the input. For the experiments, mostly 100x100 resolutions are used, as this is a limitation of the physical hardware where the tests were run on. 
+
+The hardware used is an `Intel(R) Core(TM) i7-10750H (12) @ z` and `NVIDIA Quadro T1000 Mobile`, on this hardware training took between 1 minute and 5 minutes. However, this is not a goal of the project.
+
+In this section we will discuss the results and adaptations we have made based on the findings. We will first present the final product which includes all the adaptations, which we will use as our base performance to compare against. 
+
+
+#grid(
+  columns: (1fr, 1fr),
+  rows: (auto),
+  gutter: 0pt,
+  align: bottom,
+  figure(
+    image("./images/castle_original.png", width: 100%),
+    caption: [
+      Original castle image \
+      \ /* for alignment */
+    ],
+  ),
+  figure(
+    image("./images/castle_base.png", width: 100%),
+    caption: [
+      Base performance of the representation
+    ],
+  ),
+)
+
+
+== Initalization
+For the initalization we use an hyperparameter for the amount of Gaussians that will be spawned. The color parameters of $phi_0$ will be initialized with a normal distribution $N(0,1)$, for $phi_1$ and $phi_2$ this is $N(0,0.1)$. This prevents the first and second order from being to active. The position of the Gaussians is also initialized with $N(0,1)$. The scaling parameters are also generated with $N(0,1)$ but immediately shifted down with $-4$. If this is not done, the Gaussians will overlap too much, and fight against each other, resulting in streaks. This can be seen below.
+
+#grid(
+  columns: (1fr, 1fr, 1fr),
+  rows: (auto),
+  gutter: 10pt,
+  align: bottom,
+  figure(
+    image("./images/castle_original.png", width: 100%),
+    caption: [
+      Original castle image
+    ],
+  ),
+  figure(
+    image("./images/castle_base.png", width: 100%),
+    caption: [
+      Base performance of the representation
+    ],
+  ),
+  figure(
+    image("./images/castle_big_init.png", width: 100%),
+    caption: [
+      Representation with unscaled initalization
+    ],
+  ),
+)
+
+
 
 // The template uses #link("https://typst.app/universe/package/i-figured/")[`i-figured`] for labeling equations. Equations will be numbered only if they are labelled. Here is an equation with a label:
 
