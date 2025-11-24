@@ -24,7 +24,7 @@
 #text-args-authors.insert("size", 12pt)
 
 #show: template.with(
-  title: "Sparse representation of images using gaussian splatting",
+  title: "Sparse representation of images using Gaussian splatting",
   authors: (
     (name: "Victor Klomp"),
   ),
@@ -75,7 +75,7 @@
 //  1.1 Transformers to train images
 //  1.2 Guassian splatting in 3D 
 // 2. Methods
-//  2.1 Primitive gaussian & derivatives
+//  2.1 Primitive Gaussian & derivatives
 //  2.2 Lie group, lie algebras
 //  2.3 Parametrization of Aff+
 //  2.4 Close dive into the rendering function
@@ -90,44 +90,48 @@
 In the last few years, AI and machine learning has become increasingly important. We have seen AI across a few domains, mainly text, image & video and audio. Each of these AI models work by using tokens as inputs for transformers. For text, these tokens are words or letters, however for images & video, defining these tokens is a bit more arbitrary. The most common approach is by taking 16x16 values of pixels, together with 
 
 = Method
-We will adapt the 2D gaussian splatting to include extra secondary data. This is the geometric concepts of the image, such as the rotation, scaling and translation. And we will try to incorporate higher frequency data  of the image by using derivatives of the gaussian to be better able to plot edges and lines.
+We are expanding the Gaussian splatting method with an explicit geometric description in terms of a Lie group as well as using higher order derivatives to more efficiently encode high frequency features. This is especially used in areas of high contrast, such as edges and lines.
 
-We will spawn $n$ initial gaussians, which will represent one token, and each token will have $p$ (tbd) parameters that describes the color values of the gaussian layers and the location, rotation and scale. 
+We will spawn $n$ initial Gaussians, each which will represent one token, and each token will have $p$ (tbd) parameters that describes the color values of the Gaussian layers and the geometric properties such as location, rotation and scale. 
 
 == Gaussian layers
-Instead of using just the gaussian function as is usual in gaussian splatting, we will also use the first and second order derivative of the gaussian function. As defined as
+Instead of using just the Gaussian function as is usual in Gaussian splatting, we will also use the first and second order derivative of the Gaussian function. As defined as
 
 $
- phi_0(x) := e^(-||x||) \
+ phi_0(x) := e^(-||x||^2) \
  hat(phi)_1 = (dif) / (dif x_1) phi_0 \
  hat(phi)_2 = (dif) / (dif x_1) phi_1 
 $
 
-Please note that the chose of variable ($x_1$ or $x_2$) for the derivative does not matter, as the axis are orthogonal and the function can be rotated by $90 deg$ to get the other derivative.
+Please note that the choice of variable ($x_1$ or $x_2$) for the derivative does not matter, as the axis are orthogonal and the function can be rotated by $90 deg$ to get the other derivative.
 
-This will give us more complex features to work with. These three gaussians will be layered in the same location. Below we can see the derivatives when they are unscaled. 
+This will give us more complex features to work with. These three Gaussians will be layered in the same location. Below we can see the derivatives when they are unscaled. 
+#todo-box[
+  add color scale
+]
+
 #figure(
   image("./images/gaussian_derivatives_unscaled.png", width: 50%),
   caption: [
-    Unscaled: gaussian ($phi_0$), first-order derivative ($hat(phi)_1$) and second-order derivative ($hat(phi)_2$) of a gaussian.
+    Unscaled (f.l.r): Gaussian ($phi_0$), first-order derivative ($hat(phi)_1$) and second-order derivative ($hat(phi)_2$) of a Gaussian.
   ],
 )
 
 The idea is that the "zeroth-order" derivative is used as the base color, and that the derivatives are used as accents. The first-order derivative contains a fast drop-off, this could be used for creating a sharp edge, and the second order derivative contains a sharp bump in the middle this could be used as lines. 
 
-Layering these as is will not result in a good overlap however, because the support of these functions differs by a lot. We can scale the derivatives such that their support matches better with gaussian. Scaling the first-order by 0.7 and the second-order by 0.5, we get the following gaussians, which will be layered to create more complex structures.
+Layering these as is will not result in a good overlap however, because the "support" of these functions differs by a lot. We can scale the derivatives such that their "support" matches better with Gaussian. Scaling the first-order by 0.7 and the second-order by 0.5, we get the following Gaussians, which will be layered to create more complex structures.
 
 #figure(
   image("./images/gaussian_derivatives_scaled.png", width: 50%),
   caption: [
-    Scaled: gaussian ($phi_0$), first-order derivative ($phi_1$) and second-order derivative ($phi_2$) of a gaussian.
+    Scaled: Gaussian ($phi_0$), first-order derivative ($phi_1$) and second-order derivative ($phi_2$) of a Gaussian.
   ],
 )
 
-Each of these gaussians have an independent color values. $c^(i,j)$, $i$ for each the gaussian layers, and $j$ for the color channels, totalling 9 values. Each color value is not directly the color that the gaussian attains, but rather a addition or substraction in a certain direction for the final color. For each pixel color $p c in [0,1]^3$, we start with a default of $0.5$. This has the advantage that the image is color invertible by multiplying all the color values by $-1$, but also does not introduce an implicit bias to the color black, as opposed to white (or vice versa). Therefor the color values of the gaussians can attain any value in $RR$, however, most likely they will be pushed between $[-0.5, 0.5]^3$ as  the input image contains only values between $[0, 1]^3$. This will be elaborated on later.
+Each of these Gaussians have an independent color values. $c^(i,j)$, $i$ for each the Gaussian layers, and $j$ for the color channels, totalling 9 values. Each color value is not directly the color that the Gaussian attains, but rather a addition or substraction in a certain direction for the final color. For each pixel color $p c in [0,1]^3$, we start with a default of $0.5$. This has the advantage that the image is color invertible by multiplying all the color values by $-1$, but also does not introduce an implicit bias to the color black, as opposed to white (or vice versa). Therefor the color values of the Gaussians can attain any value in $RR$, however, most likely they will be pushed between $[-0.5, 0.5]^3$ as  the input image contains only values between $[0, 1]^3$. This will be elaborated on later.
 
 == Lie groups
-This component for position, rotation and scale should ideally be a lie group. As this means our representation has geometric properties. 
+This component for position, rotation and scale should ideally be a Lie group. As this means our representation can benefit from all the structure and tools that Lie groups provide.
 
 === Affine group
 Such a group $G$ is defined as the following. 
@@ -143,7 +147,7 @@ $
 $
 for all $(x_2,A_2), (x_1, A_1) in Aff^+(RR^2)$.
 ]
-Where $GL^+(RR^2)$ is the group of 2-dimensional real linear transformations with positive determinants, i.e. $2 times 2$ matrices with positive determinant. This positive determinants ensures that the transformation does not flip the image, as the gaussians and their derivatives are symmetric, this is not needed, and only confuses.
+Where $GL^+(RR^2)$ is the group of 2-dimensional real linear transformations with positive determinants, i.e. $2 times 2$ matrices with positive determinant. This positive determinants ensures that the transformation does not flip the image, as the Gaussians and their derivatives are symmetric, this is not needed, and only confuses.
 
 #todo-box[
   What are the unit element and the inverse?
@@ -164,7 +168,7 @@ g act S := { g act y | y in S }
 .
 $
 
-This allows us to use this lie group to position points in our image. The next thing to consider is that the gaussians we use to fill our image is not one point, but a collection of points defined by a function in $RR^2$. Therefore we will also need to define how this group acts on a function on $RR^2$. This is induced as the following: 
+This allows us to use this Lie group to position points in our image. The next thing to consider is that the Gaussians we use to fill our image is not one point, but a collection of points defined by a function in $RR^2$. Therefore we will also need to define how this group acts on a function on $RR^2$. This is induced as the following: 
 
 Let $f:RR^2 -> RR$ then we define $g act f : RR^2 -> RR$ by
 $
@@ -201,7 +205,7 @@ $
 
 
 === Lie groups & parameter space
-This works quite well for positioning the gaussians in some particular spot. However, to make this match our target image, we will use gradient descent, as will be explained later. This requires the parameters to be a vector space. This is not the case by default for the Lie group. This means that when applying gradient descent at the current stage, the parameters could no longer be in the Lie group after gradient descent steps. This means that this parameter has no longer any useful meaning, and cannot be used to position the gaussian. 
+This works quite well for positioning the Gaussians in some particular spot. However, to make this match our target image, we will use gradient descent, as will be explained later. This requires the parameters to be a vector space. This is not the case by default for the Lie group. This means that when applying gradient descent at the current stage, the parameters could no longer be in the Lie group after gradient descent steps. This means that this parameter has no longer any useful meaning, and cannot be used to position the Gaussian. 
 
 For this reason, we will search for a parameter space, $V$, such that $V$ is a vector space, and there exists a surjective function $psi : V -> G$. We can use this to apply gradient descent on $V$, as this is a vector space, and render the image using $G$. 
 
@@ -212,7 +216,7 @@ To solve this issue, we will make use of the Lie algebra. This is the tangent sp
 The Lie algebra of $Aff^+(RR^2)$ is $aff(RR^2) := RR^2 times.r gl(RR^2) equiv RR^2 times.r RR^(2 times 2)$.
 Note that we say $aff$ and not $aff^+$, this is because $aff$ is the Lie algebra of both the $Aff^+$ and $Aff$ Lie groups, illustrating that there is not a one-to-one relationship between Lie groups and Lie algebras.
 
-The lie algebra $aff$ can be represented by the linear transformation $W$ and a translation $v$ seperately. Or they can be put together in one matrix, as 
+The Lie algebra $aff$ can be represented by the linear transformation $W$ and a translation $v$ seperately. Or they can be put together in one matrix, as 
 
 $
   A = mat(
@@ -246,7 +250,7 @@ exp( (v,W) )
 ( (integral_0^1 e^(t W) dif t) v, e^W ).
 $<eq:affine-exp>
 
-Unfortunately, from @culver1966existence we know that matrix multiplication is not surjective. So we cannot use $aff$ to create every possible gaussian. Besides the fact that is not surjective, is the integral also a problem. This means that the function is not a convenient close formula, but instead requires a lot of computation.
+Unfortunately, from @culver1966existence we know that matrix exponentiation is not surjective. So we cannot use $aff$ to create every possible Gaussian. Besides the fact that is not surjective, is the integral also a problem. This means that the function is not a convenient closed formula, but instead requires a lot of computation.
 
 
 == Kaji-Ochiai parameterization
@@ -293,7 +297,7 @@ $
 
 // Aff+(2) / Stab(phi) -> R^2 x SPD(2)
 
-// Als we de shearing weghalen, kunnen we dan nog alle gaussians rendering -> als we de shearing weghalen, kunnen we dan nog RR^2 x SPD(2) genereren. 
+// Als we de shearing weghalen, kunnen we dan nog alle Gaussians rendering -> als we de shearing weghalen, kunnen we dan nog RR^2 x SPD(2) genereren. 
 
 
 // This would result in
@@ -310,7 +314,7 @@ $<eq:parametrization-map>
 
 The matrix exponentials in the parametrization map @eq:parametrization-map  have the following closed formulae
 $
-  exp_symm = 
+  exp_symm (r) = 
   exp mat(0,-r; r,0)
   =
   mat(cos r, -sin r; sin r, cos r)
@@ -324,7 +328,7 @@ and
 
 // or including the shearing
 $
-  exp_so = 
+  exp_so (s_1, s_2, s_3) = 
   exp mat(s_1, s_3; s_3, s_2)
   &=
   e^((s_1+s_2)/2)
@@ -444,7 +448,7 @@ $
   
 $.
 
-It is also true that applying $S R x$ in the other order can result in shearing, we will show this with an counter example.
+It is also true that applying $S R x$ in the other order can result in shearing, we will show this with an example.
 
 Define 
 $
@@ -465,9 +469,9 @@ And thus we can see that $phi_0$ is not affected by shearing.
 
 // To remove the shear, we can remove the shearing parameter in G, this will result in the group homomorphism $G \\ SO(2)$. 
 
-We can remove the shearing by setting $s 3 = 0$ in the parameter space $V$. Furthermore, from the proof we can also see that we multiply the $exp_so$ with $exp_symm$ instead of the otherway around, i.e. applying the scaling before the rotation. This is currently already the case, in the parametrization of Kaij-Ochiai.
+We can remove the shearing by setting $s_3 = 0$ in the parameter space $V$. Furthermore, from the proof we can also see that we multiply the $exp_so$ with $exp_symm$ instead of the otherway around, i.e. applying the scaling before the rotation. This is currently already the case, in the parametrization of Kaij-Ochiai.
 
-Now that we have fixed $s 3=0$, we can see that $V equiv RR^5$. We can still map this using $psi$, however this will no longer map to $Aff^+$, but a subset of that where there exists no shearing. This subset is not a group.
+Now that we have fixed $s_3=0$, we can see that $V equiv RR^5$. We can still map this using $psi$, however this will no longer map to $Aff^+$, but a subset of that where there exists no shearing. This subset is not a group.
 
 _Proof:_
 
@@ -483,7 +487,7 @@ The first and second order Gaussians are not rotationally symmetric, so shear do
 However, emoving this property gives us some better analysis on the anisotropy#footnote[Anisotropy is how "stretched" an ellipsoid, or in our case a Gaussian, is. We will see later why this is useful] of a Gaussian, as the anisotropy is now uniquely generated by the scaling parameters. However we will need to do some experiments if the shear property has significant impact on the first and second derivative. 
 
 == Rendering function
-For $x in RR^2$ the Gaussian value is defined as $phi(x) = exp(-norm(x))$.
+// For $x in RR^2$ the Gaussian value is defined as $phi(x) = exp(-norm(x))$.
 
 The target image we want to approximate is defined as $f(x) : RR^2 -> RR^3$.
 
@@ -500,7 +504,7 @@ $
 To find the optimal parameters $c$ and $v$, we will use gradient descent as explained earlier. For this, we will define a score, called a loss, that determines how well a set of parameters represents the image. We will use two methods to measure how well a representation is. First of all, we will use the $L_1$ norm, in practice, this is the pixel-by-pixel difference of each color channel. Formally defined as $||f-hat(f)||$. Besides this we will also use the structural similarity index measure (SSIM). These will be weighed with $lambda$. The total loss for how well the image looks will be
 $L_"image" = lambda||f - hat(f)|| + (1 - lambda) * (1 - text("SSIM")(f, hat(f))) $.
 
-Besides the actual representation, we have two other things that we want to discourage. As gradient descent tries to find the minimum of the loss, we can put things in the loss to discourage certain behavior. First of all, we want to limit the anisotropy, to make sure gaussians do not become stretched out, but stay fairly round. This will prevent artifacts and overfitting. Futhermore, we also do not want gaussians to become too small, to be exact they must not be smaller than a pixel, as this will make them hidden while rendering, but they still contain information in the final embedding. 
+Besides the actual representation, we have two other things that we want to discourage. As gradient descent tries to find the minimum of the loss, we can put things in the loss to discourage certain behavior. First of all, we want to limit the anisotropy, to make sure Gaussians do not become stretched out, but stay fairly round. This will prevent artifacts and overfitting. Futhermore, we also do not want Gaussians to become too small, to be exact they must not be smaller than a pixel, as this will make them hidden while rendering, but they still contain information in the final embedding. 
 
 We will add two extra components to the loss function, one for the sizing and one for the anisotropy. They are defined as 
 $L_"anisotropy" = overline(|s_1 + s_2|) * lambda_"anisotropy"$
@@ -528,17 +532,17 @@ As $RR^2 times RR times RR^3$ are all vector spaces and the loss function is con
 // - sin(b), cos(b))$
 
 == Culling
-As we want to decrease the amount of gaussians that we save, we will remove the gaussians based on their parameters, this process we will call culling. The most obvious is that we would like to remove gaussians where the color values are negligible small for all gaussian layers. Formalized by 
+As we want to decrease the amount of Gaussians that we save, we will remove the Gaussians based on their parameters, this process we will call culling. The most obvious is that we would like to remove Gaussians where the color values are negligible small for all Gaussian layers. Formalized by 
 $
 sum_j^3 c^(1,j) <= 0.05 and sum_j^3 c^(2,j) <= 0.05 and sum_j^3 c^(3,j) <= 0.05
 $.
 
-The other criterion is again the anisotropy of the gaussian, as mentioned earlier. Formally, we do this by removing all gaussians where
+The other criterion is again the anisotropy of the Gaussian, as mentioned earlier. Formally, we do this by removing all Gaussians where
 $
   s 1 + s 2 <= 7.5
 $.
 
-The problem is that these gaussians are visible, so doing this culling after all training is done, would leave some gaps in the image. Therefore we do this on 80% of the training, thus giving the gradient descent still some iterations to recover and fill the gaps.
+The problem is that these Gaussians are visible, so doing this culling after all training is done, would leave some gaps in the image. Therefore we do this on 80% of the training, thus giving the gradient descent still some iterations to recover and fill the gaps.
 
 = Results
 To put this into practise, we use pytorch to make use of CUDA kernels and speed up the rendering. The source code is available at (). The images are constrained to 1:1 to ease the implementation, the theory can be easily scaled to any ratio.The resolution can differ, and based on the input. For the experiments, mostly 100x100 resolutions are used, as this is a limitation of the physical hardware where the tests were run on. 
