@@ -547,21 +547,7 @@ $
 
 // The group actions are defined by for $g in Aff^+(2), y in RR^2$ then $g act y = (A, x) act y := A y+ x$
 
-To find the optimal parameters $c$ and $v$, we will use gradient descent as explained earlier. For this, we will define a score, called a loss, that determines how well a set of parameters represents the image. We will use two methods to measure how well a representation is. First of all, we will use the $L_1$ norm; in practice, this is the pixel-by-pixel difference of each color channel. Formally defined as $||f-hat(f)||$. Besides this, we will also use the structural similarity index measure (SSIM). These will be weighed with $lambda$. The total loss for how well the image looks will be
-$L_"image" = lambda||f - hat(f)|| + (1 - lambda) * (1 - text("SSIM")(f, hat(f))) $.
-
-Besides the actual representation, we have two other things that we want to discourage. As gradient descent tries to find the minimum of the loss, we can put things in the loss to discourage certain behavior. First of all, we want to limit the anisotropy, to make sure Gaussians do not become stretched out, but stay fairly round. This will prevent artifacts and overfitting. Furthermore, we also do not want Gaussians to become too small; to be exact, they must not be smaller than a pixel, as this will make them hidden while rendering, but they still contain information in the final embedding. 
-
-We will add two extra components to the loss function, one for the sizing and one for the anisotropy. They are defined as 
-$L_"anisotropy" = overline(|s_1 + s_2|) * lambda_"anisotropy"$
-and 
-$L_"sizing" = overline(exp( -(s_1 + s_2) -8)) * lambda_"sizing"$. Where $lambda_"anisotropy"$ and $lambda_"sizing"$ are how much influence these loss functions have. 
-
-The final loss is then defined as $L = L_"image" + L_"anisotropy" + L_"sizing"$
-
-
-
-As $RR^2 times RR times RR^3$ are all vector spaces, and the loss function is continuous, we can use gradient descent to optimize this. We will use AdamW and a scheduler to further optimize the training process.
+To find the optimal parameters $c$ and $v$, we will use gradient descent as explained earlier. For this, we will define a score, called a loss, that determines how well a set of parameters represents the image. Taking steps downwards of the gradient will find us a local minimum. Using extra methods such as optimizers, scheduler, and modifying the loss, we will make sure that minimum found is as close to the global minimum as possible.
 
 // $G = "Aff"^+ (2)$
 
@@ -647,9 +633,243 @@ For the initialization, we use a hyperparameter for the number of Gaussians that
   ),
 )
 
+== Gradient descent
+As mentioned earlier we use gradient descent. For this we need a loss function. This loss functions consists of a few different components. Most importantly, the $L_1$ loss, formally defined as $||f-hat(f)||$. Besides this, we will also use the structural similarity index measure (SSIM). These will be weighed with $lambda$. The total loss for how well the image looks will be
+$L_"image" = lambda||f - hat(f)|| + (1 - lambda) * (1 - text("SSIM")(f, hat(f))) $. The $L_1$ loss has a big focus on individual pixel differences, while this is useful, this might overfit on certain pixel. SSIM on the otherhand focus on differences on a structural level, looking more at luminance and constrast. Combining these two has been done in similiar image representation projects, and work here again. 
 
+#todo-box[
+  Possible: add some images to back this up. Perhaps also that the loss is more "convex" (i.e. doesnt go up, which was the case when only using L1 loss). Although I have no good reasoning for why this happens. 
+]
 
-// The template uses #link("https://typst.app/universe/package/i-figured/")[`i-figured`] for labeling equations. Equations will be numbered only if they are labelled. Here is an equation with a label:
+Besides the actual representation, we have two other things that we want to discourage. As gradient descent tries to find the minimum of the loss, we can put things in the loss to discourage certain behavior. First of all, we want to limit the anisotropy, to make sure Gaussians do not become stretched out, but stay fairly round. This will prevent artifacts and overfitting. Furthermore, we also do not want Gaussians to become too small; to be exact, they must not be smaller than a pixel, as this will make them hidden while rendering, but they still contain information in the final embedding. 
+
+The effects of small gaussians is not directly apparent, contrary, it seems at some points the representation is better. Noticing the difference can be done by looking at the detail in the dormer window. The difference in the amount of Gaussians will be explained in "Culling".
+
+#grid(
+  columns: (1fr, 1fr, 1fr),
+  rows: (auto),
+  gutter: 10pt,
+  align: bottom,
+  figure(
+    image("./images/castle_original.png", width: 100%),
+    caption: [
+ Original castle image
+    ],
+  ),
+  figure(
+    image("./images/castle_base.png", width: 100%),
+    caption: [
+ Base performance of the representation
+    ],
+  ),
+  figure(
+    image("./images/castle_no_size_no_culling.png", width: 100%),
+    caption: [
+ No sizing in loss \
+ \
+    ],
+  ),
+)
+
+However when rendering the representations upscaled, the difference becomes apparant. Both images are trained in a 100x100 resolution, but the final render is upscaled to 150x150.
+
+#grid(
+  columns: (1fr, 1fr),
+  rows: (auto),
+  gutter: 10pt,
+  figure(
+    image("./images/castle_base_upscaled.png", width: 100%),
+    caption: [
+ Base performance of the representation, upscaled
+    ],
+  ),
+  figure(
+    image("./images/castle_no_size_no_culling_upscaled.png", width: 100%),
+    caption: [
+ No sizing in loss, upscaled \
+ \
+    ],
+  ),
+)
+
+You will see the artifacts in the right image. These are not visible in the 100x100, as they are smaller than a pixel in the 100x100 render. This comes from the fact that the representation is infinitely detailed, but the rendering is a sampling of that representation. For each pixel, instead of the average over the whole pixel, only a specific spot within the pixel is picked. Taking the average is computationally expensive, and only shifts the same problem to the smaller level. These small Gaussians do influence the sample spots of the pixels, so removing them is not an option.
+
+#figure(
+  grid(
+    columns: (1fr, 1fr),
+    rows: (auto),
+    gutter: 0pt,
+    figure(
+      image("./images/sampling_example_high.png", width: 100%),
+      numbering: none,
+      caption: [
+        100x100
+      ],
+    ),
+    figure(
+      image("./images/sampling_example_low.png", width: 100%),
+      numbering: none,
+      caption: [
+        2x2
+      ],
+    ),
+  ),
+  caption: [
+    The same Gaussian representation, sampled differently. In this implementation, the sampling happens at the bottom left corner. The bright yellow spot is not visible anymore.
+  ]
+)
+
+To already penalize this in the trainig process, we will add the following loss function $L_"sizing" = overline(exp( -(s_1 + s_2) -8)) * lambda_"sizing"$ to the loss. Where $lambda_"sizing"$ determines how much influence this loss functions has. 
+
+The effect of anisotropic Gaussians is fairly similiar, as can be seen below.
+
+#grid(
+  columns: (1fr, 1fr, 1fr),
+  rows: (auto),
+  gutter: 10pt,
+  align: bottom,
+  figure(
+    image("./images/castle_original.png", width: 100%),
+    caption: [
+ Original castle image\
+ \
+    ],
+  ),
+  figure(
+    image("./images/castle_no_shear_no_culling.png", width: 100%),
+    caption: [
+ Representation without shearing loss \
+ \
+    ],
+  ),
+  figure(
+    image("./images/castle_no_shear_no_culling_upscaled.png", width: 100%),
+    caption: [
+ Representation without shearing loss, upscaled
+    ],
+  ),
+)
+
+Here we define the anisotropy as 
+$L_"anisotropy" = overline(|s_1 + s_2|) * lambda_"anisotropy"$. Because shear is exclusively generated by the size, this is an easy way to penalize for this.
+
+The final loss is then defined as $L = L_"image" + L_"anisotropy" + L_"sizing"$
+
+As $RR^2 times RR times RR^3$ are all vector spaces, and the loss function is continuous, we can use gradient descent to optimize this. We will use AdamW and a scheduler to further optimize the training process.
+
+== Amount of Gaussians
+The amount of Gaussians have a significant impact on both the quality of the image and the amount of tokens, but they are inversely related. Finding an optimal is therefore essential. This amount is also highly dependent on the resolution, and nature of the image. Images which a lot of contrast and high frequency data, such as text, require more Gaussians.
+
+The base image we have been using uses 1500 Gaussians, below are the effects doubling and halving that
+
+#grid(
+  columns: (1fr, 1fr, 1fr),
+  rows: (auto),
+  gutter: 10pt,
+  align: bottom,
+  "",
+  figure(
+    image("./images/castle_original.png", width: 100%),
+    caption: [
+ Original castle image
+    ],
+  ),
+  "",
+  figure(
+    image("./images/castle_low_amount.png", width: 100%),
+    caption: [
+ Representation with 750 Gaussians initialized  \
+ \
+*SSIM Loss:* 0.0770\
+*L1 Loss:* 0.0186
+    ],
+  ),
+  figure(
+    image("./images/castle_base.png", width: 100%),
+    caption: [
+ Representation with 1500 Gaussians initialized\
+ *SSIM Loss:* 0.0429\
+*L1 Loss:* 0.0131
+    ],
+  ),
+  figure(
+    image("./images/castle_high_amount.png", width: 100%),
+    caption: [
+ Representation with 3000 Gaussians initialized\
+  *SSIM Loss:* 0.0088 \
+*L1 Loss:* 0.0056
+
+    ],
+  ),
+)
+
+Clearly the progression is visible, the representation initalized with 3000 Gaussians is almost identical for the naked eye. An important side not here is that the tokens grow exponentionally in terms of cost of the neural network. 
+
+== Higher order Gaussians
+To see the performance and the influence of the higher order Gaussians, we remove the $phi_0$ and only render $phi_{1,2}$. Looking at the previous comparison we can clearly see the lines and edges in the image.
+
+#grid(
+  columns: (1fr, 1fr, 1fr),
+  rows: (auto),
+  gutter: 10pt,
+  align: bottom,
+  "",
+  figure(
+    image("./images/castle_original.png", width: 100%),
+    caption: [
+ Original castle image
+    ],
+  ),
+  "",
+  figure(
+    image("./images/castle_accent_low_amount.png", width: 100%),
+    caption: [
+ Accents with 750 Gaussians initialized 
+    ],
+  ),
+  figure(
+    image("./images/castle_accent_base.png", width: 100%),
+    caption: [
+ Accents with 1500 Gaussians initialized
+    ],
+  ),
+  figure(
+    image("./images/castle_accent_high_amount.png", width: 100%),
+    caption: [
+ Accents with 3000 Gaussians initialized
+    ],
+  ),
+)
+
+You can clearly see where the image has higher frequency, and see the outlines of the castle. This effect is a lot stronger with more Gaussians. 
+
+#grid(
+  columns: (1fr, 1fr, 1fr),
+  rows: (auto),
+  gutter: 10pt,
+  align: bottom,
+  figure(
+    image("./images/cars_original.png", width: 100%),
+    caption: [
+ Original castle image
+    ],
+  ),
+  figure(
+    image("./images/cars_accent_base.png", width: 100%),
+    caption: [
+ Accents with 1500 Gaussians initialized
+    ],
+  ),
+  figure(
+    image("./images/cars_accent_high_amount.png", width: 100%),
+    caption: [
+ Accents with 3000 Gaussians initialized
+    ],
+  ),
+)
+
+On the cars image containing more edges, this effect is more clearly visible.
+// The template uses #link("https://typst.app/universe/package/i-figured/")[`i-figured`] for labeling equations. Equations will be numbered only i`f they are labelled. Here is an equation with a label:
 
 // $
 //   sum_(k=1)^n k = (n(n+1)) / 2
