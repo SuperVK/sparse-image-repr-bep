@@ -24,9 +24,11 @@
 #text-args-authors.insert("size", 12pt)
 
 #show: template.with(
-  title: "Sparse representation of images using Gaussian splatting",
+  title: "Sparse geometric representation of images using Gaussian splatting (Bachelor thesis)",
   authors: (
-    (name: "Victor Klomp"),
+    (name: "Victor Klomp (Author)"),
+    (name: "Finn Sherry (Supervisor)"),
+    (name: "Bart Smets (Supervisor)")
   ),
   // affiliations: (
   //   (id: 1, name: "Affiliation 1, Address 1"),
@@ -68,28 +70,46 @@
   icon-name: "gear",
 )
 
+#pagebreak()
 
+#outline()
 
+#pagebreak()
 // Setup:
 // 1. Introduction
 //  1.1 Transformers to train images
 //  1.2 Guassian splatting in 3D 
-// 2. Methods
+//  1.3 Gaussian splatting for transformers
+//  1.4 Gaussian derviatives for higher frequency data
+// 2. Theory
 //  2.1 Primitive Gaussian & derivatives
 //  2.2 Lie group, lie algebras
 //  2.3 Parametrization of Aff+
-//  2.4 Close dive into the rendering function
-//  2.5 Loss function
-//  2.6 Culling
-// 3. Results
-//  3.1 Basic results
-//  3.2 First and second and high frequency data
-//  3.3 Hyperparameter tuning
+// 3. Methods
+//  3.1 Close dive into the rendering function
+//  3.2 Loss function
+//  3.3 Culling
+// 4. Results
+//  4.1 Basic results
+//  4.2 First and second and high frequency data
+//  4.3 Hyperparameter tuning
+// 5. Conclusion & future work
 
 = Introduction
-In the last few years, AI and machine learning has become increasingly important. We have seen AI across a few domains, mainly text, image & video and audio. Each of these AI models work by using tokens as inputs for transformers. For text, these tokens are words or letters, however for images & video, defining these tokens is a bit more arbitrary. The most common approach is by taking 16x16 values of pixels, together with 
+In the last few years, AI and machine learning have become increasingly important. We have seen ML applied across several domains, mainly text, image and video, and audio. For image recognition, convolutional neural networks (CNN) have been quite successful. CNNs use convolutional kernels to group pixels together, such that for a 100x100, we do not need 100,000 weights to connect each pixel. These networks are designed to extract information from images, such as classification. This has become the defacto standard for image recognition in the past 10 years. (source)
 
-= Method
+Recently, another model has become prevalent: the transformer @vaswani2023attentionneed.
+Transformer take tokens as inputs, in most cases, these tokens are words. The transformer can predict new tokens, leading to generative models. It was discovered (an image is worth 16x16 words) that you can serialize an image into patches of 16x16 pixels and use those as tokens to train transformers successfully. This already outperforms "classical" CNNs.
+
+For transformers in natural language, tokens have meaningful relations to each other. A classical example is Vector("King")-Vector("Man") $tilde.equiv$ Vector("Queen")-Vector("Woman) @mikolov2013efficientestimationwordrepresentations. This is less true for 16x16 image patches, these tokens are chosen with little geometric meaning in the image. This is also described in (an image is worth 16x16 words), where we can see that attention of a token is mostly on tokens that are on the same row/column axis. 
+
+Ideally, we can find a set of tokens that describe an image, similar to how a set of words describes a sentence or text. While text tokens can encode grammatical or contextual information, image tokens should capture geometric information.
+
+One way to generate such tokens is Gaussian splatting. This has been widely used for 3D scene reconstruction. By taking multiple pictures and spawning Gaussian blobs in 3D to match each view, resulting in a 3D scene represented by Gaussians. This is done using gradient descent to train the scenes to iteratively better match each image, using L1 and SSIM loss. Recently, Gaussian splatting has also been used in 2D for image representation @zhang_gaussianimage_2025. This works essentially by only taking only one image, and training for that single image. This process works a lot simpler as quite a few complication for 3D do not have to be made anymore. Besides encoding tokens for transformers, 2D Gaussian splatting can also be used in scenarios where encoding is done once and decoding is done multiple times, such as textures for video games. 
+
+Tokenization of Gaussian parameters has already been studied @dong_gaussiantoken_2025. In this thesis we aim to provide more geometric value to these tokens by using Lie theory. Furthermore, we want to encode higher-frequency data using derivatives of Gaussians. Convolutional neural networks have been shown to extract information from high-frequency components; explicitly encoding these could give transformers a similar capability. (Source?)
+
+= Theory
 We are expanding the Gaussian splatting method with an explicit geometric description in terms of a Lie group, as well as using higher order derivatives to more efficiently encode high frequency features. This is especially used in areas of high contrast, such as edges and lines.
 
 We will spawn $n$ initial Gaussians, each of which will represent one token, and each token will have $p$ (tbd) parameters that describe the color values of the Gaussian layers and the geometric properties such as location, rotation, and scale. 
@@ -205,7 +225,7 @@ $
 
 
 === Lie groups & parameter space
-This works quite well for positioning the Gaussians in some particular spot. However, to make this match our target image, we will use gradient descent, as will be explained later. This requires the parameters to be a vector space. This is not the case by default for the Lie group. This means that when applying gradient descent at the current stage, the parameters could no longer be in the Lie group after gradient descent steps. This means that this parameter has no longer any useful meaning, and cannot be used to position the Gaussian. 
+This works quite well for positioning the Gaussians in some particular spot. However, to make this match our target image, we will use gradient descent, as will be explained later. This requires the parameters to lie in a vector space. This is not the case by default for the Lie group. This means that when applying gradient descent at the current stage, the parameters could no longer be in the Lie group after gradient descent steps. This means that this parameter has no longer any useful meaning, and cannot be used to position the Gaussian. 
 
 For this reason, we will search for a parameter space, $V$, such that $V$ is a vector space, and there exists a surjective function $psi : V -> G$. We can use this to apply gradient descent on $V$, as this is a vector space, and render the image using $G$. 
 
@@ -216,14 +236,18 @@ To solve this issue, we will make use of the Lie algebra. This is the tangent sp
 The Lie algebra of $Aff^+(RR^2)$ is $aff(RR^2) := RR^2 times.r gl(RR^2) equiv RR^2 times.r RR^(2 times 2)$.
 Note that we say $aff$ and not $aff^+$; this is because $aff$ is the Lie algebra of both the $Aff^+$ and $Aff$ Lie groups, illustrating that there is not a one-to-one relationship between Lie groups and Lie algebras.
 
-The Lie algebra $aff$ can be represented by the linear transformation $W$ and a translation $v$ separately. Or they can be put together in one matrix, as 
-
+The Lie group $Aff^+(RR^2)$ and Lie algebra $aff(RR^2)$ both have a matrix representation, respectively these are
 $
- A = mat(
+  mat(
+ A, x;
+ 0, 1
+  )  "and" 
+        mat(
  W, v;
  0, 0
-  )
+  ).
 $
+This representation of the Lie group still follows the group operation, by doing the matrix multiplication.
 
 // _Relevancy of the following is not directly clear to me_
 // -> In principe nog niet direct relevant
@@ -242,7 +266,7 @@ $
 // _The following is a bit unclear to me, especially where the definition of the exponential map comes from_ -> kijk naar boek van Hall
 // #quote-box[
 Lie groups and Lie algebras are related to each other through the exponential map.
-For our case the exponential map $exp_(Aff^+(RR^2)) : aff(RR^2) -> Aff^+(RR^2)$ is given by $exp(A)$.
+For our case the exponential map $exp_(Aff^+(RR^2)) : aff(RR^2) -> Aff^+(RR^2)$ is given by $exp$.
 
 Doing this for $W$ and $v$ seperately is equivalent to $
 exp( (v,W) )
@@ -250,12 +274,12 @@ exp( (v,W) )
 ( (integral_0^1 e^(t W) dif t) v, e^W ).
 $<eq:affine-exp>
 
-Unfortunately, from @culver1966existence we know that matrix exponentiation is not surjective. So we cannot use $aff$ to create every possible Gaussian. Besides the fact that it is not surjective, is the integral also a problem. This means that the function is not a convenient closed formula, but instead requires a lot of computation.
+Unfortunately, from @culver1966existence we know that the $Aff^+$ exponential map is not surjective. So we cannot use $aff$ to create every possible Gaussian. Besides the fact that it is not surjective, is the integral also a problem. This means that the function is not a convenient closed formula, but instead requires a lot of computation.
 
 
 == Kaji-Ochiai parameterization
 
-As we cannot use the default Lie algebra $aff$ from the Lie group $Aff^+$ as $V$, we will need to look a bit further. We adapt the findings from @kaji_concise_2016, where they describe a parameterization for $Aff^+(RR^3)$, which has a similar role as the Lie algebra. This parameterization is for a 3D affine transformation; it starts from what is essentially the Lie algebra but constructs a different surjective mapping than the exponential onto the group (but still closely related). We will simplify this parametrization to 2 dimensions. 
+As we cannot use the default Lie algebra $aff$ from the Lie group $Aff^+$ as $V$, we will need to look a bit further. We adapt the findings from @kaji_concise_2016, where they describe a parameterization of $Aff^+(RR^3)$, where this parameterization has a similar role as the Lie algebra. This parameterization is for a 3D affine transformation; it starts from what is essentially the Lie algebra but constructs a different surjective mapping than the exponential onto the group (but still closely related). We will simplify this parametrization to 2 dimensions. 
 
 
 
@@ -419,9 +443,7 @@ Furthermore, we can see that the effect of a shear on a Gaussian can also be gen
 
 #theorem(title: "Shear generation")[
 
-  $forall A in GL^+ (RR^2),"  " exists overline(R) in SO(2), D in SPD(2)$ and diagonal, i.e. $D = mat(e^(s_1), 0; 0, e^(s_2))$. 
-
- Such that $A act phi_0 = overline(R) D act phi_0$.
+  For all $A in GL^+ (RR^2)$, there exists a $overline(R) in SO(2)$ and $D in SPD(2)$ which is also diagonal, i.e. $D = mat(e^(s_1), 0; 0, e^(s_2))$, such that $A act phi_0 = overline(R) D act phi_0$.
 ] <thm:shear-generation>
 
 _Proof:_
@@ -431,16 +453,16 @@ _Proof:_
 We know that $A = R S$, then we can do an Eigendecomposition and decompose $S$ as
 
 $
- S = Q Lambda Q^T
-$.
+ S = Q Lambda Q^T.
+$
 
 Where $Lambda = mat(lambda_1, 0; 0, lambda_2)$ with $lambda_{1,2}$ as the Eigenvalues from S. $Q in O(2)$, however we can flip the Eigenvalues in the decomposition when $det(Q) = -1$, therefore without loss of generality $Q in SO(2)$.
 
 This means that we get the following.
 
 $
- A act phi_0 = R S act phi_0 = R Q Lambda Q^T act phi_0 = R Q Lambda act (Q^T act phi_0) = R Q Lambda act phi_0
-$.
+ A act phi_0 = R S act phi_0 = R Q Lambda Q^T act phi_0 = R Q Lambda act (Q^T act phi_0) = R Q Lambda act phi_0.
+$
 
 Now we can define $overline(R) := R Q in SO(2)$ and $D := Lambda$.
 
@@ -476,7 +498,7 @@ and
 $
  S = mat(exp(s 1), 0; 0, exp(s 2))
 $
-applied as $R S x$ results in $e_1 e_2^T = 0$
+applied as $R S x$ results in $e_1 e_2^T = 0$.
 
 We can see this by
 $
@@ -484,10 +506,10 @@ $
   &= e_1^T S^T R^T R S e_2\
   &= e_1^T S^T S e_2 & "As R is orthogonal"  \
   &= (s_1, 0)^T (0, s_2)\
-  &= 0
+  &= 0.
 
   
-$.
+$
 
 It is also true that for $B = S R$, applying $S R x$ in the other order can result in shearing; we will show this with an example.
 
@@ -497,8 +519,8 @@ $
 $
 and
 $
- R = mat(sqrt(2)/2, sqrt(2)/2; -sqrt(2)/2, sqrt(2)/2)
-$.
+ R = mat(sqrt(2)/2, sqrt(2)/2; -sqrt(2)/2, sqrt(2)/2).
+$
 
 Now clearly 
 $(S R e_1)^T (S R e_2) = - 3/2 != 0$
@@ -531,6 +553,9 @@ Intuitively, the previous results make sense as the rotational symmetry of $phi_
 )
 
 While this is not exactly the same, and for $phi_{1,2}$ parameterization with $s_3=0$ is no longer surjective, however, removing this property would give us some better analysis on the anisotropy#footnote[Anisotropy is how "stretched" an ellipsoid, or in our case a Gaussian, is. We will see later why this is useful] of a Gaussian, as the anisotropy is now uniquely generated by the scaling parameters. However, we will need to do some experiments if the shear property has a significant impact on the first and second derivatives. 
+
+= Methods
+We will look at the methods that we will be using to actually create the Gaussians representations. 
 
 == Rendering function
 // For $x in RR^2$ the Gaussian value is defined as $phi(x) = exp(-norm(x))$.
@@ -566,13 +591,13 @@ To find the optimal parameters $c$ and $v$, we will use gradient descent as expl
 == Culling
 As we want to decrease the number of Gaussians that we save, we will remove the Gaussians based on their parameters. This process we will call culling. The most obvious is that we would like to remove Gaussians where the color values are negligibly small for all Gaussian layers. Formalized by 
 $
-sum_j^3 c^(1,j) <= 0.05 and sum_j^3 c^(2,j) <= 0.05 and sum_j^3 c^(3,j) <= 0.05
-$.
+sum_j^3 abs(c^(1,j)) <= 0.05 and sum_j^3 abs(c^(2,j)) <= 0.05 and sum_j^3 abs(c^(3,j)) <= 0.05.
+$
 
 The other criterion is again the anisotropy of the Gaussian, as mentioned earlier. Formally, we do this by removing all Gaussians where
 $
- s 1 + s 2 <= 7.5
-$.
+ s 1 + s 2 <= -7.5.
+$
 
 The problem is that these Gaussians are visible, so doing this culling after all training is done would leave some gaps in the image. Therefore, we do this on 80% of the training, thus giving the gradient descent still some iterations to recover and fill the gaps.
 
