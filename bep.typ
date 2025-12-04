@@ -1,5 +1,6 @@
 #import "@preview/clean-math-paper:0.2.4": *
 #import "@preview/theorion:0.3.3": *
+#import "@preview/subpar:0.2.2"
 // #import cosmos.fancy: *
 // #import cosmos.rainbow: *
 #import cosmos.clouds: *
@@ -27,8 +28,8 @@
   title: "Sparse geometric representation of images using Gaussian splatting (Bachelor thesis)",
   authors: (
     (name: "Victor Klomp (Author)"),
-    (name: "Finn Sherry (Supervisor)"),
-    (name: "Bart Smets (Supervisor)")
+    (name: "Bart M.N. Smets (Supervisor)"),
+    (name: "Finn M. Sherry (Supervisor)")
   ),
   // affiliations: (
   //   (id: 1, name: "Affiliation 1, Address 1"),
@@ -96,23 +97,21 @@
 // 5. Conclusion & future work
 
 = Introduction
-In the last few years, AI and machine learning have become increasingly important. We have seen ML applied across several domains, mainly text, image and video, and audio. For image recognition, convolutional neural networks (CNN) have been quite successful. CNNs use convolutional kernels to group pixels together, such that for a 100x100, we do not need 100,000 weights to connect each pixel. These networks are designed to extract information from images, such as classification. This has become the defacto standard for image recognition in the past 10 years. (source)
+In the last few years, AI and machine learning have become increasingly important. We have seen ML applied across several domains, mainly text, image and video, and audio. For image recognition, convolutional neural networks (CNN) have been quite successful. CNNs use convolutional kernels to group pixels together, such that for an 100x100 pixel image, we do not need 10,000 weights to connect each pixel. These networks are designed to extract information from images, such as classification. This has become the defacto standard for image recognition in the past 10 years @Zhao2024 @NIPS2012_c399862d.
 
 Recently, another model has become prevalent: the transformer @vaswani2023attentionneed.
-Transformer take tokens as inputs, in most cases, these tokens are words. The transformer can predict new tokens, leading to generative models. It was discovered (an image is worth 16x16 words) that you can serialize an image into patches of 16x16 pixels and use those as tokens to train transformers successfully. This already outperforms "classical" CNNs.
+Transformer take tokens as inputs, in most cases, these tokens are words. The transformer can predict new tokens, leading to generative models. It was discovered that you can serialize an image into patches of 16x16 pixels and use those as tokens to train transformers successfully @dosovitskiy_image_2021. Initially outperforming "classical" CNNs, later the optimizations in the transformers have been backported to CNN @liu2022convnet2020s. In this thesis however, we will focus on transformers instead of CNNs, specifically the generation of tokens for transformers.
 
-For transformers in natural language, tokens have meaningful relations to each other. A classical example is Vector("King")-Vector("Man") $tilde.equiv$ Vector("Queen")-Vector("Woman) @mikolov2013efficientestimationwordrepresentations. This is less true for 16x16 image patches, these tokens are chosen with little geometric meaning in the image. This is also described in (an image is worth 16x16 words), where we can see that attention of a token is mostly on tokens that are on the same row/column axis. 
+Ideally, we can find a set of tokens that describe an image, similar to how a set of words describes a sentence or text. While text tokens can encode grammatical or contextual information, image tokens should capture geometric information. Currently the 16x16 patches do not contain a lot of geometrical information. This is also described in @dosovitskiy_image_2021, where we can see that attention of a token is mostly on tokens that are on the same row/column axis. This is most likely because of the embedding, instead of the actual relevance of those tokens.
 
-Ideally, we can find a set of tokens that describe an image, similar to how a set of words describes a sentence or text. While text tokens can encode grammatical or contextual information, image tokens should capture geometric information.
+One way to generate such tokens is Gaussian splatting. This has popularized in 2023 and is being used for 3D scene reconstruction @kerbl20233d. By taking multiple pictures and spawning Gaussian blobs in 3D to match each view, resulting in a 3D scene represented by Gaussians. This is done using gradient descent to train the scenes to iteratively better match each image, using L1 and SSIM loss. Recently, Gaussian splatting has also been used in 2D for image representation @zhang_gaussianimage_2025. This works essentially by only taking only one image, and training for that single image. This process works a lot simpler as quite a few complication for 3D do not have to be made anymore. Besides encoding tokens for transformers, 2D Gaussian splatting can also be used in scenarios where encoding is done once and decoding is done multiple times, such as textures for video games. 
 
-One way to generate such tokens is Gaussian splatting. This has been widely used for 3D scene reconstruction. By taking multiple pictures and spawning Gaussian blobs in 3D to match each view, resulting in a 3D scene represented by Gaussians. This is done using gradient descent to train the scenes to iteratively better match each image, using L1 and SSIM loss. Recently, Gaussian splatting has also been used in 2D for image representation @zhang_gaussianimage_2025. This works essentially by only taking only one image, and training for that single image. This process works a lot simpler as quite a few complication for 3D do not have to be made anymore. Besides encoding tokens for transformers, 2D Gaussian splatting can also be used in scenarios where encoding is done once and decoding is done multiple times, such as textures for video games. 
-
-Tokenization of Gaussian parameters has already been studied @dong_gaussiantoken_2025. In this thesis we aim to provide more geometric value to these tokens by using Lie theory. Furthermore, we want to encode higher-frequency data using derivatives of Gaussians. Convolutional neural networks have been shown to extract information from high-frequency components; explicitly encoding these could give transformers a similar capability. (Source?)
+Tokenization of Gaussian parameters has already been studied @dong_gaussiantoken_2025. In this thesis we aim to provide more geometric value to these tokens by using Lie theory. Furthermore, we hope to use more complex wavelets to encode more information in a single token. As each token has attention to all other tokens, transformer networks grow exponentionally, limiting the amount of tokens is thus key to smaller networks. We hope to use first and second order derivatives of the Gaussian function to define edges and lines more effeciently than a normal Gaussian can.
 
 = Theory
-We are expanding the Gaussian splatting method with an explicit geometric description in terms of a Lie group, as well as using higher order derivatives to more efficiently encode high frequency features. This is especially used in areas of high contrast, such as edges and lines.
+We are expanding the Gaussian splatting method with an explicit geometric description in terms of a Lie group, as well as using higher order derivatives to more efficiently encode edges and lines.
 
-We will spawn $n$ initial Gaussians, each of which will represent one token, and each token will have $p$ (tbd) parameters that describe the color values of the Gaussian layers and the geometric properties such as location, rotation, and scale. 
+// We will spawn $n$ initial Gaussians, each of which will represent one token, and each token will have $p$ (tbd) parameters that describe the color values of the Gaussian layers and the geometric properties such as location, rotation, and scale. 
 
 == Gaussian layers
 Instead of using just the Gaussian function as is usual in Gaussian splatting, we will also use the first and second order derivatives of the Gaussian function. As defined as
@@ -167,15 +166,36 @@ $
 $
 for all $(x_2,A_2), (x_1, A_1) in Aff^+(RR^2)$.
 ]
-Where $GL^+(RR^2)$ is the group of 2-dimensional real linear transformations with positive determinants, i.e. $2 times 2$ matrices with positive determinant. This positive determinant ensures that the transformation does not flip the image, as the Gaussians and their derivatives are symmetric, which is not needed, and only confuses.
+Where $GL^+(RR^2)$ is the group of 2-dimensional real linear transformations with positive determinants, i.e. $2 times 2$ matrices with positive determinant. This positive determinant ensures that the transformation does not flip the image, as the Gaussians and their derivatives are symmetric, which is not needed. Furthermore, this also causes the group to consistent of two seperate components which we cannot move between in a continious fashion. Intuitively, you can rotate continously, you cannot flip an image continously. Later, this will also make mathematical sense, when we decompose $GL+(RR^2)$ into a rotational matrix and a positive definite symmetric matrix, which is only possible with a positive determinant.
 
-#todo-box[
- What are the unit element and the inverse?
-  
- What is the dimension of the group?
-  
- Prove $Aff^+(RR^2)$ is a _Lie group_.
+#lemma[
+The unit element of $G$ is $(0, I)$, the inverse of any $(x, A) in G$ is $(-A^(-1)x, A^(-1))$ and the $G$ has a dimension of 6.
 ]
+
+_Proof:_
+
+Let $(x, A) in G$.
+
+The unit element is $(0, I)$, as
+$(x, A)(0, I) = (A 0 + x, A I) = (x, A)$.
+
+The inverse is $(-A^(-1)x, A^(-1))$ as $(x, A)(-A^(-1)x, A^(-1)) = (-A A^(-1)x + x, A A^(-1)) = (0, I)$.
+
+The dimension is trivial.
+
+$qed$
+
+#proposition[
+$Aff^+(RR^2)$ is a _Lie group_. 
+]
+
+_Proof:_
+
+We will show that $(x,y) mapsto x^(-1) y$ with $x, y in G$ is a smooth map. 
+
+As matrix inverse and multiplication and scalar multiplication and addition are all smooth, we conclude that the map $(x,y) mapsto x^(-1) y$ is also smooth. 
+
+$qed$
 
 The affine group acts on $RR^2$ in the following manner:
 $
@@ -236,6 +256,7 @@ To solve this issue, we will make use of the Lie algebra. This is the tangent sp
 The Lie algebra of $Aff^+(RR^2)$ is $aff(RR^2) := RR^2 times.r gl(RR^2) equiv RR^2 times.r RR^(2 times 2)$.
 Note that we say $aff$ and not $aff^+$; this is because $aff$ is the Lie algebra of both the $Aff^+$ and $Aff$ Lie groups, illustrating that there is not a one-to-one relationship between Lie groups and Lie algebras.
 
+#lemma[
 The Lie group $Aff^+(RR^2)$ and Lie algebra $aff(RR^2)$ both have a matrix representation, respectively these are
 $
   mat(
@@ -248,6 +269,20 @@ $
   ).
 $
 This representation of the Lie group still follows the group operation, by doing the matrix multiplication.
+]
+
+_Proof:_
+
+Let $(x_1, A_1), (x_2, A_2) in Aff^+(RR^2)$.
+
+$(x_1, A_1) (x_2, A_2)$ in matrix form is 
+
+$mat(A_1, x_1; 0, 1)mat(A_2, x_2; 0, 1) = mat(A_1 A_2, A_1 x_2 + x_1; 0, 1).$
+
+Converting this back is $(A_1 x_2 + x_1, A_1 A_2)$, which proofs the matrix multiplication is equivalent the group operation.
+
+$qed$
+
 
 // _Relevancy of the following is not directly clear to me_
 // -> In principe nog niet direct relevant
@@ -307,7 +342,7 @@ The second vector space $symm(2)$ is the set of (real) symmetric $2 times 2$ mat
 $
 [A,B]^T = (A B - B A)^T = B^T A^T - A^T B^T = - (A^T B^T - B^T A^T) = -[A,B]
 $
-for all $A,B in symm(n)$.
+for all $A,B in symm(2)$.
 
 The vector space $symm(2)$ has three degrees of freedom:
 $
@@ -400,22 +435,22 @@ R^T R
 (A^T A)^(-1/2) (A^T A) (A^T A)^(-1/2) = I.
 $
 
-#note-box[
-Some formulae for computing an inverse (need to verify):
-$
-s_1 + s_2 = log(det(S)) = log(det(A))
-,
-\
-cosh(a) = 2 e^(-(s_1+s_2)/2) trace(S)
-,
-\
-s_1 - s_2 = e^(-(s_1+s_2)/2) a / sinh(a) (S_(1,1)-S_(2,2))
-,
-\
-s_3 = e^(-(s_1+s_2)/2) a / sinh(a) S_(2,1)
-.
-$
-]
+// #note-box[
+// Some formulae for computing an inverse (need to verify):
+// $
+// s_1 + s_2 = log(det(S)) = log(det(A))
+// ,
+// \
+// cosh(a) = 2 e^(-(s_1+s_2)/2) trace(S)
+// ,
+// \
+// s_1 - s_2 = e^(-(s_1+s_2)/2) a / sinh(a) (S_(1,1)-S_(2,2))
+// ,
+// \
+// s_3 = e^(-(s_1+s_2)/2) a / sinh(a) S_(2,1)
+// .
+// $
+// ]
 
 
 == A note on shearing
@@ -529,17 +564,17 @@ $qed$
 
 And thus we can see that the parametrization is still surjective with $s_3 = 0$. We can therefore remove this in the parameter space $V equiv RR^5$. We can still map this using $psi$, however, this will no longer map to $Aff^+$, but a subset of that where there exists no shearing. This subset is not a group.
 
-#proposition[
+#corollary[
 
  Define $T subset GL^+(RR^2)$. $T := {A in GL^+(RR^2) | (A e_1)^T A e_2 = 0}$. Then T is not a group.
 ]
 
-_Proof:_
+// _Proof:_
 
-Take $R$ and $S$, which are each clearly in this subset that contains no shearing. However, as we showed before, $S R$ does contain shearing. 
-Thus, not in this subset; therefore, the subset is not a group.
+// Take $R$ and $S$, which are each clearly in this subset that contains no shearing. However, as we showed before, $S R$ does contain shearing. 
+// Thus, not in this subset; therefore, the subset is not a group.
 
-$qed$
+// $qed$
 
 // This results in the positive semi-definite scaling matrix $S$ being applied before the orthogonal rotational matrix $R$.
 
@@ -588,7 +623,7 @@ To find the optimal parameters $c$ and $v$, we will use gradient descent as expl
 // $exp(X) = mat(cos(b), sin(b);
 // - sin(b), cos(b))$
 
-== Culling
+== Culling<culling>
 As we want to decrease the number of Gaussians that we save, we will remove the Gaussians based on their parameters. This process we will call culling. The most obvious is that we would like to remove Gaussians where the color values are negligibly small for all Gaussian layers. Formalized by 
 $
 sum_j^3 abs(c^(1,j)) <= 0.05 and sum_j^3 abs(c^(2,j)) <= 0.05 and sum_j^3 abs(c^(3,j)) <= 0.05.
@@ -609,16 +644,13 @@ The hardware used is an `Intel(R) Core(TM) i7-10750H (12) @ z` and `NVIDIA Quadr
 In this section, we will discuss the results and adaptations we have made based on the findings. We will first present the final product, which includes all the adaptations, which we will use as our base performance to compare against. 
 
 
-#grid(
+#subpar.grid(
   columns: (1fr, 1fr),
-  rows: (auto),
-  gutter: 0pt,
-  align: bottom,
+  caption: [Comparing the original image against the base representation. The base representation uses 1500 Gaussians, ],
   figure(
     image("./images/castle_original.png", width: 100%),
     caption: [
- Original castle image \
-      \ /* for alignment */
+ Original castle image
     ],
   ),
   figure(
@@ -633,11 +665,12 @@ In this section, we will discuss the results and adaptations we have made based 
 == Initalization
 For the initialization, we use a hyperparameter for the number of Gaussians that will be spawned. The color parameters of $phi_0$ will be initialized with a normal distribution $N(0,1)$, for $phi_1$ and $phi_2$, this is $N(0,0.1)$. This prevents the first and second orders from being too active. The position of the Gaussians is also initialized with $N(0,1)$. The scaling parameters are also generated with $N(0,1)$ but immediately shifted down by $-4$. If this is not done, the Gaussians will overlap too much and fight against each other, resulting in streaks. This can be seen below.
 
-#grid(
+#subpar.grid(
   columns: (1fr, 1fr, 1fr),
   rows: (auto),
   gutter: 10pt,
-  align: bottom,
+  align: top,
+  caption: [Comparing the different intialization techniques. Both representation use 1500 Gaussians, 100x100.],
   figure(
     image("./images/castle_original.png", width: 100%),
     caption: [
@@ -666,15 +699,17 @@ $L_"image" = lambda||f - hat(f)|| + (1 - lambda) * (1 - text("SSIM")(f, hat(f)))
   Possible: add some images to back this up. Perhaps also that the loss is more "convex" (i.e. doesnt go up, which was the case when only using L1 loss). Although I have no good reasoning for why this happens. 
 ]
 
-Besides the actual representation, we have two other things that we want to discourage. As gradient descent tries to find the minimum of the loss, we can put things in the loss to discourage certain behavior. First of all, we want to limit the anisotropy, to make sure Gaussians do not become stretched out, but stay fairly round. This will prevent artifacts and overfitting. Furthermore, we also do not want Gaussians to become too small; to be exact, they must not be smaller than a pixel, as this will make them hidden while rendering, but they still contain information in the final embedding. 
+== Artifacts<artifacts>
+Besides the actual representation, we have two other things that we want to discourage to prevent the generation of invisible or unwanted artifacts. As gradient descent tries to find the minimum of the loss, we can put things in the loss to discourage certain behavior. First of all, we want to limit the anisotropy, to make sure Gaussians do not become stretched out, but stay fairly round. Furthermore, we also do not want Gaussians to become too small; to be exact, they must not be smaller than a pixel, as this will make them hidden while rendering, but they still contain information in the final embedding. Both of these are already being prevented in @culling, culling, but to push Gaussians in the right direction before fully being removed, we also want to put this in the loss.
 
-The effects of small gaussians is not directly apparent, contrary, it seems at some points the representation is better. Noticing the difference can be done by looking at the detail in the dormer window. The difference in the amount of Gaussians will be explained in "Culling".
+The effects of small gaussians is not directly apparent, seemingly the performance is roughly similiar.
 
-#grid(
+#subpar.grid(
   columns: (1fr, 1fr, 1fr),
   rows: (auto),
   gutter: 10pt,
-  align: bottom,
+  align: top,
+  caption: [Comparing the size penalty, both representations are started with 1500 Gaussians, 100x100. ],
   figure(
     image("./images/castle_original.png", width: 100%),
     caption: [
@@ -684,93 +719,94 @@ The effects of small gaussians is not directly apparent, contrary, it seems at s
   figure(
     image("./images/castle_base.png", width: 100%),
     caption: [
- Base performance of the representation
+ Base performance of the representation. \ SSIM: 0.0418
     ],
   ),
   figure(
     image("./images/castle_no_size_no_culling.png", width: 100%),
     caption: [
- No sizing in loss \
- \
+ No sizing in loss, no culling. \ SSIM: 0.0471
     ],
   ),
 )
 
 However when rendering the representations upscaled, the difference becomes apparant. Both images are trained in a 100x100 resolution, but the final render is upscaled to 150x150.
 
-#grid(
+#subpar.grid(
   columns: (1fr, 1fr),
   rows: (auto),
   gutter: 10pt,
+  align: top,
+  caption: [Comparing the upscaled renders of the representation. Not penalizing the size of the Gaussian clearly creates hidden artifacts],
   figure(
     image("./images/castle_base_upscaled.png", width: 100%),
     caption: [
- Base performance of the representation, upscaled
+ Base performance of the representation, upscaled to 150x150.
     ],
   ),
   figure(
     image("./images/castle_no_size_no_culling_upscaled.png", width: 100%),
     caption: [
- No sizing in loss, upscaled \
- \
+ No sizing in loss, upscaled to 150x150.
     ],
   ),
 )
 
-You will see the artifacts in the right image. These are not visible in the 100x100, as they are smaller than a pixel in the 100x100 render. This comes from the fact that the representation is infinitely detailed, but the rendering is a sampling of that representation. For each pixel, instead of the average over the whole pixel, only a specific spot within the pixel is picked. Taking the average is computationally expensive, and only shifts the same problem to the smaller level. These small Gaussians do influence the sample spots of the pixels, so removing them is not an option.
+You will see the artifacts in the right image. These are not visible in the 100x100, as they are smaller than a pixel in the 100x100 render. This comes from the fact that the representation is infinitely detailed, but the rendering is a sampling of that representation. For each pixel, instead of the average over the whole pixel, only a specific spot within the pixel is picked. Taking the average is computationally expensive, and only shifts the same problem to the smaller level. These small Gaussians do influence the sample spots of the pixels, so removing them is not an option. This effect is also showcased in @subpixel-sampling.
 
-#figure(
-  grid(
-    columns: (1fr, 1fr),
-    rows: (auto),
-    gutter: 0pt,
-    figure(
-      image("./images/sampling_example_high.png", width: 100%),
-      numbering: none,
-      caption: [
-        100x100
-      ],
-    ),
-    figure(
-      image("./images/sampling_example_low.png", width: 100%),
-      numbering: none,
-      caption: [
-        2x2
-      ],
-    ),
+#subpar.grid(
+  columns: (1fr, 1fr),
+  rows: (auto),
+  gutter: 0pt,
+  align: top,
+  figure(
+    image("./images/sampling_example_high.png", width: 100%),
+    numbering: none,
+    caption: [
+      100x100
+    ],
+  ),
+  figure(
+    image("./images/sampling_example_low.png", width: 100%),
+    numbering: none,
+    caption: [
+      2x2
+    ],
   ),
   caption: [
     The same Gaussian representation, sampled differently. In this implementation, the sampling happens at the bottom left corner. The bright yellow spot is not visible anymore.
-  ]
+  ],
+  label: <subpixel-sampling>
 )
+
+The problem with these subpixel Gaussians is that they will still contain information in the tokens, to keep these tokens pure and as close to the original image as possible, we want to remove this. 
 
 To already penalize this in the trainig process, we will add the following loss function $L_"sizing" = overline(exp( -(s_1 + s_2) -8)) * lambda_"sizing"$ to the loss. Where $lambda_"sizing"$ determines how much influence this loss functions has. 
 
 The effect of anisotropic Gaussians is fairly similiar, as can be seen below.
 
-#grid(
+#subpar.grid(
   columns: (1fr, 1fr, 1fr),
   rows: (auto),
   gutter: 10pt,
-  align: bottom,
+  align: top,
+  caption: [The same Gaussian representation, where shearing is not penalized in the loss. In the upscaled version the artifacts are clearly visible. The SSIM is 0.0396],
   figure(
     image("./images/castle_original.png", width: 100%),
     caption: [
- Original castle image\
- \
+ Original castle image
     ],
   ),
   figure(
     image("./images/castle_no_shear_no_culling.png", width: 100%),
     caption: [
- Representation without shearing loss \
- \
+ Representation without shearing loss, and no culling at 100x100. 
     ],
   ),
   figure(
     image("./images/castle_no_shear_no_culling_upscaled.png", width: 100%),
     caption: [
- Representation without shearing loss, upscaled
+ Representation without shearing loss, and no culling, upscaled to 150x150.
     ],
   ),
 )
@@ -778,33 +814,33 @@ The effect of anisotropic Gaussians is fairly similiar, as can be seen below.
 Here we define the anisotropy as 
 $L_"anisotropy" = overline(|s_1 + s_2|) * lambda_"anisotropy"$. Because shear is exclusively generated by the size, this is an easy way to penalize for this.
 
-The final loss is then defined as $L = L_"image" + L_"anisotropy" + L_"sizing"$
+The final loss is then defined as $L = L_"image" + L_"anisotropy" + L_"sizing"$, $lambda_"anisotropy"$ and $lambda_"sizing"$ are both set to 0.1.
 
 As $RR^2 times RR times RR^3$ are all vector spaces, and the loss function is continuous, we can use gradient descent to optimize this. We will use AdamW and a scheduler to further optimize the training process.
 
-== Amount of Gaussians
-The amount of Gaussians have a significant impact on both the quality of the image and the amount of tokens, but they are inversely related. Finding an optimal is therefore essential. This amount is also highly dependent on the resolution, and nature of the image. Images which a lot of contrast and high frequency data, such as text, require more Gaussians.
+== Amount of Gaussians<amount-of-gaussians>
+The amount of Gaussians have a significant impact on both the quality of the image and the amount of tokens, but they are inversely related. Finding an optimal is therefore essential, as too much tokens will slow down the training of the model, but quality is needed to train effeciently. This amount is also highly dependent on the resolution of the original image, and nature of the image. Images which a lot of contrast and high frequency data, such as text in an image, require more Gaussians.
 
-The base image we have been using uses 1500 Gaussians, below are the effects doubling and halving that
+The base image we have been using uses 1500 Gaussians for 100x100, below are the effects doubling and halving that
 
-#grid(
+#subpar.grid(
   columns: (1fr, 1fr, 1fr),
   rows: (auto),
   gutter: 10pt,
-  align: bottom,
-  "",
+  align: top,
+  caption: [Comparing different starting amount of Gaussians.],
+  figure(""),
   figure(
     image("./images/castle_original.png", width: 100%),
     caption: [
  Original castle image
     ],
   ),
-  "",
+  figure(""),
   figure(
     image("./images/castle_low_amount.png", width: 100%),
     caption: [
  Representation with 750 Gaussians initialized  \
- \
 *SSIM Loss:* 0.0770\
 *L1 Loss:* 0.0186
     ],
@@ -829,6 +865,81 @@ The base image we have been using uses 1500 Gaussians, below are the effects dou
 )
 
 Clearly the progression is visible, the representation initalized with 3000 Gaussians is almost identical for the naked eye. An important side not here is that the tokens grow exponentionally in terms of cost of the neural network. 
+
+== Culling
+In @culling, we already talked about how we will do the culling. We will also take a short look at how this works in practise. One of the big things that makes a difference is penalizing the size in the loss. If we do not this we get significantly worse results, and also a big reduction in Gaussians @culling-no-sizing. 
+
+#subpar.grid(
+  columns: (1fr, 1fr),
+  rows: (auto),
+  gutter: 0pt,
+  align: top,
+  figure(
+    image("./images/castle_base.png", width: 100%),
+    numbering: none,
+    caption: [
+      Base performance of the representation. Starts with 1500 Gaussians, end with 1417 Gaussians after culling.
+    ],
+  ),
+  figure(
+    image("./images/castle_no_size_culling.png", width: 100%),
+    numbering: none,
+    caption: [
+      Representation with culling, but no size in loss. Starts with 1500 Gaussians, end with 632 Gaussians. 
+    ],
+  ),
+  caption: [
+    Not penalizing sizing in the loss results in a worse performance after culling. This makes sense as the representation will count too much on small Gaussians during training, which will be removed afterwards. This is especially noticable for the gray areas, where there is a lack of Gaussians providing any color.
+  ],
+  label: <culling-no-sizing>
+)
+
+Furthermore, going back to @amount-of-gaussians, we can compare the start and end Gaussians.
+
+#table(
+  columns: (auto, auto, auto),
+  inset: 8pt,
+  align: center,
+  table.header(
+    [], [*Start Gaussians*], [*End Gaussians*],
+  ),
+  "Low amount: ", "750", "731",
+  "Normal amount: ", "1500", "1417",
+  "High amount: ", "3000", "2827",
+
+)
+
+About 5% of the Gaussians are being removed. Almost all of these Gaussians are being removed based on color, i.e. they provide little to nothing to the color values.
+
+#subpar.grid(
+  columns: (1fr, 1fr, 1fr),
+  rows: (auto),
+  gutter: 10pt,
+  align: top,
+  caption: [The same Gaussian representation, where shearing is not penalized in the loss. In the upscaled version the artifacts are clearly visible. The SSIM is 0.0396],
+  figure(
+    image("./images/castle_original.png", width: 100%),
+    caption: [
+ Original castle image
+    ],
+  ),
+  figure(
+    image("./images/castle_base.png", width: 100%),
+    caption: [
+ Base performance representation\
+ *SSIM:* 0.0418
+    ],
+  ),
+  figure(
+    image("./images/castle_no_culling_sizing.png", width: 100%),
+    caption: [
+ Base performance representation but without culling\
+ *SSIM:* 0.0350
+    ],
+  ),
+)
+
+While the performance is better in terms of the SSIM, however we see the same issues as in @artifacts.
 
 == Higher order Gaussians
 To see the performance and the influence of the higher order Gaussians, we remove the $phi_0$ and only render $phi_{1,2}$. Looking at the previous comparison we can clearly see the lines and edges in the image.
@@ -866,7 +977,7 @@ To see the performance and the influence of the higher order Gaussians, we remov
   ),
 )
 
-You can clearly see where the image has higher frequency, and see the outlines of the castle. This effect is a lot stronger with more Gaussians. 
+You can clearly see where the image has more fidelity, and see the outlines of the castle. This effect is a lot stronger with more Gaussians. 
 
 #grid(
   columns: (1fr, 1fr, 1fr),
@@ -965,4 +1076,4 @@ On the cars image containing more edges, this effect is more clearly visible.
 
 #lorem(100)
 
-#bibliography("bibliography.bib", full: true, style: "springer-basic-author-date")
+#bibliography("bibliography.bib", style: "springer-basic-author-date")
