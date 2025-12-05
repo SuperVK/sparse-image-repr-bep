@@ -1,4 +1,4 @@
-#import "@preview/clean-math-paper:0.2.4": *
+#import "template.typ": *
 #import "@preview/theorion:0.3.3": *
 #import "@preview/subpar:0.2.2"
 // #import cosmos.fancy: *
@@ -18,30 +18,47 @@
 
 #let date = datetime.today().display("[month repr:long] [day], [year]")
 
+#set page(
+  header: context {
+    if counter(page).get().first() > 1 [
+    // #text(font: "Cantarell", weight: "extrabold", fill: rgb("#db1a0c"))[TU/e]
+    #box(image("images/tue-logo.png", height: 10pt))
+    #h(1fr)  
+    Bachelor final project
+    ]
+  },
+  footer: context {
+    if counter(page).get().first() > 1 [
+      #align(center)[#context counter(page).get().first()]
+    ]
+  }
+)
+
 // Modify some arguments, which can be overwritten in the template call
-#page-args.insert("numbering", "1/1")
+// #page-args.insert("numbering", "1/1")
 #text-args-title.insert("size", 2em)
 #text-args-title.insert("fill", black)
 #text-args-authors.insert("size", 12pt)
 
 #show: template.with(
-  title: "Sparse geometric representation of images using Gaussian splatting (Bachelor thesis)",
+  title: text(font: "Cantarell", weight: "bold")[Sparse geometric representation of images \ using Gaussian splatting] + text(14pt, black)[\ (Bachelor thesis)],
   authors: (
     (name: "Victor Klomp (Author)"),
     (name: "Bart M.N. Smets (Supervisor)"),
     (name: "Finn M. Sherry (Supervisor)")
   ),
+  lines: false,
   // affiliations: (
   //   (id: 1, name: "Affiliation 1, Address 1"),
   //   (id: 2, name: "Affiliation 2, Address 2"),
   //   (id: "*", name: "Corresponding author")
   // ),
-  date: date,
-  heading-color: rgb("#ff0000"),
-  link-color: rgb("#008002"),
+  date: date + text(10pt, black)[\ Technical university of Eindhoven],
+  heading-color: rgb("#c92127"),
+  link-color: rgb("#185693"),
   // Insert your abstract after the colon, wrapped in brackets.
   // Example: `abstract: [This is my abstract...]`
-  abstract: lorem(30),
+  abstract: lorem(100),
   // keywords: ("First keyword", "Second keyword", "etc."),
   // AMS: ("65M70", "65M12"),
   // Pass page-args to change page settings
@@ -71,11 +88,16 @@
   icon-name: "gear",
 )
 
-#pagebreak()
+\ \ \
+#align(center)[
+  #image("images/frontpage.png", width: 100pt)
+]
+
+#colbreak()
 
 #outline()
 
-#pagebreak()
+#colbreak()
 // Setup:
 // 1. Introduction
 //  1.1 Transformers to train images
@@ -97,7 +119,7 @@
 // 5. Conclusion & future work
 
 = Introduction
-In the last few years, AI and machine learning have become increasingly important. We have seen ML applied across several domains, mainly text, image and video, and audio. For image recognition, convolutional neural networks (CNN) have been quite successful. CNNs use convolutional kernels to group pixels together, such that for an 100x100 pixel image, we do not need 10,000 weights to connect each pixel. These networks are designed to extract information from images, such as classification. This has become the defacto standard for image recognition in the past 10 years @Zhao2024 @NIPS2012_c399862d.
+In the last few years, AI and machine learning have become increasingly important. We have seen ML applied across several domains, mainly text, image and video, and audio. For image recognition, convolutional neural networks (CNN) have been quite successful. CNNs use convolutional kernels to group pixels together, such that for an 100x100 pixel image, we do not need 10,000 weights to connect each pixel. These networks are designed to extract information from images, such as classification. This has become the defacto standard for image recognition in the past 10 years @Zhao2024 @NIPS2012_c399862d
 
 Recently, another model has become prevalent: the transformer @vaswani2023attentionneed.
 Transformer take tokens as inputs, in most cases, these tokens are words. The transformer can predict new tokens, leading to generative models. It was discovered that you can serialize an image into patches of 16x16 pixels and use those as tokens to train transformers successfully @dosovitskiy_image_2021. Initially outperforming "classical" CNNs, later the optimizations in the transformers have been backported to CNN @liu2022convnet2020s. In this thesis however, we will focus on transformers instead of CNNs, specifically the generation of tokens for transformers.
@@ -1005,75 +1027,26 @@ You can clearly see where the image has more fidelity, and see the outlines of t
 )
 
 On the cars image containing more edges, this effect is more clearly visible.
-// The template uses #link("https://typst.app/universe/package/i-figured/")[`i-figured`] for labeling equations. Equations will be numbered only i`f they are labelled. Here is an equation with a label:
-
-// $
-//   sum_(k=1)^n k = (n(n+1)) / 2
-// $<equation>
-
-// We can reference it by `@eq:label` like this: @eq:equation, i.e., we need to prepend the label with `eq:`. The number of an equation is determined by the section it is in, i.e., the first digit is the section number and the second digit is the equation number within that section.
-
-// Here is an equation without a label:
-
-// $
-//   exp(x) = sum_(n=0)^oo (x^n) / n!
-// $
-
-// As we can see, it is not numbered.
-
-// = Theorems
-
-// The template uses #link("https://typst.app/universe/package/great-theorems/")[`great-theorems`] for theorems. Here is an example of a theorem:
-
-// #theorem(title: "Example Theorem")[
-//   This is an example theorem.
-// ]<th:example>
-// #proof[
-//   This is the proof of the example theorem.
-// ]
 
 
-// We also provide `definition`, `lemma`, `remark`, `example`, and `question`s among others. Here is an example of a definition:
 
-// #definition(title: "Example Definition")[
-//   This is an example definition.
-// ]
+= Conclusion
+In this thesis, we have looked an alternative tokenization of images for transformer models using Lie theory and Gaussian splatting. We noticed that $Aff^+$ provides a good geometric representation of Gaussians. Unfortunately, the canonical vector space parameterization of Lie groups, Lie algebras, are not suitable. Therefore, we have derived an alternative parametrization that can be better used. 
 
-// #question(title: "Custom mathblock?")[
-//   How do you define a custom mathblock?
-// ]
+We have also analyzed the effect of shearing on the Gaussians to be able to better analyze the training process. Noticing that the effect of shearing on Gaussians can also be generated by rotation and scaling. This leaves only two sizing parameters which are geometrically easy to interpret, allowing us to penalize this metric. 
 
-// #let answer = my-mathblock(
-//   blocktitle: "Answer",
-//   bodyfmt: text.with(style: "italic"),
-// )
+Furthermore, more complex wavelets can be used to encode more complex features in images. Specifically, we can use first and second order derivatives of Gaussians to encode edges and lines in an image. In theory this should be able to reduce the amount of Gaussians used in the representation, although this outside of the scope of this thesis.
 
-// #answer[
-//   You can define a custom mathblock like this:
-//   ```typst
-//   #let answer = my-mathblock(
-//     blocktitle: "Answer",
-//     bodyfmt: text.with(style: "italic"),
-//   )
-//   ```
-// ]
+Finally, we can use metrics of Gaussians to futher generate tokens that provide useful result. Specifically we can make sure that the training process does not abuse the implementation details of the rendering function, such as Gaussians that are subpixel. Furthermore, we can also remove any Gaussians that are not relevant to the final representation, reducing the amount of final Gaussians that are used as tokens.
 
-// Similar as for the equations, the numbering of the theorems is determined by the section they are in. We can reference theorems by `@label` like this: @th:example.
+= Future work
+This thesis has mostly been exploratory on various techniques and topics, ideally, we could better compare actual impact on a large dataset of images. For this, more computing power is needed. This would also allow us to compare image and performance at a higher resolution.
 
-// To get a bibliography, we also add a citation @Cooley65.
+Furthermore, the wavelets have been chosen somewhate arbitrary, perhaps there are other configurations of wavelets that can do better representation. This will probably depend heavily on the type of application. Where specific wavelets might be better suited for specific types of images. 
 
-// #lorem(50)
-
-// #bibliography("bibliography.bib")
-
-// // Create appendix section
-// #show: appendices
+Finally, the representation is ideally tested on an actual transformer to see if the transformer can properly work with our representation. Ideally this is compared against a representation that does not include first and second order derivatives. We suspect that the transformer is able to extract extra information from the higher orders. 
 
 
-// If you have appendices, you can add them after `#show: appendices`. The appendices are started with an empty heading `=` and will be numbered alphabetically. Any appendix can also have different subsections.
-
-= Appendix section
-
-#lorem(100)
+#colbreak()
 
 #bibliography("bibliography.bib", style: "springer-basic-author-date")
