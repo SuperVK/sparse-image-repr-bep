@@ -714,53 +714,71 @@ The hardware used is an `Intel(R) Core(TM) i7-10750H (12) @ z` and `NVIDIA Quadr
 In this section, we will discuss the results and adaptations we have made based on the findings. We will first present the final product, which includes all the adaptations, which we will use as our base performance to compare against. 
 
 
-#subpar.grid(
-  columns: (1fr, 1fr),
-  caption: [Comparing the original image against the base representation. The base representation uses 1500 Gaussians, ],
-  figure(
-    image("./images/castle_original.png", width: 100%),
-    caption: [
- Original castle image
-    ],
-  ),
-  figure(
-    image("./images/castle_base.png", width: 100%),
-    caption: [
- Base performance of the representation
-    ],
-  ),
+#figure(
+  caption: [Comparing the original image against the base representation. The base representation uses 1500 Gaussians. ],
+  grid(
+    columns: (1fr, 1fr),
+    figure(
+      kind: "subfigure-base",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_original.png", width: 100%),
+      caption: [
+  Original castle image
+      ],
+    ),
+    figure(
+      kind: "subfigure-base",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_base.png", width: 100%),
+      caption: [
+  Base performance of the representation
+      ],
+    ),
+  )
 )
 
 
 == Initialization
 For the initialization, we use a hyperparameter for the number of Gaussians that will be spawned. The color parameters of $phi_0$ will be initialized with a normal distribution $N(0,1)$, for $phi_1$ and $phi_2$, this is $N(0,0.1)$. I.e. $c^(0 j)_k ~ N(0, 1)$ and $c^(i j)_k ~ N(0, 1)$ for $i in {1,2}$. This prevents the first and second orders from being too active. The position of the Gaussians is also initialized with $N(0,1)$. The rotational parameter $r$ is generated between 0 and $2 pi$ uniformely. The scaling parameters are also generated with $N(0,1)$ but immediately shifted down by $-4$, in other words $s_1, s_2 ~ N(-4, 1)$. If this is not done, the Gaussians will overlap too much and fight against each other, resulting in streaks. This can be seen in @initialization.
 
-#subpar.grid(
-  columns: (1fr, 1fr, 1fr),
-  rows: (auto),
-  gutter: 10pt,
-  align: top,
+#figure(
   caption: [Comparing the different intialization techniques. Both representation use 1500 Gaussians, 100x100.],
-  figure(
-    image("./images/castle_original.png", width: 100%),
-    caption: [
- Original castle image
-    ],
-  ),
-  figure(
-    image("./images/castle_base.png", width: 100%),
-    caption: [
- Base performance of the representation
-    ],
-  ),
-  figure(
-    image("./images/castle_big_init.png", width: 100%),
-    caption: [
- Representation with unscaled initialization
-    ],
-  ),
-  label: <initialization>
-)
+  grid(
+    columns: (1fr, 1fr, 1fr),
+    rows: (auto),
+    gutter: 10pt,
+    align: top,
+    figure(
+      kind: "subfigure-initialization",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_original.png", width: 100%),
+      caption: [
+  Original castle image
+      ],
+    ),
+    figure(
+      kind: "subfigure-initialization",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_base.png", width: 100%),
+      caption: [
+  Base performance of the representation
+      ],
+    ),
+    figure(
+      kind: "subfigure-initialization",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_big_init.png", width: 100%),
+      caption: [
+  Representation with unscaled initialization
+      ],
+    )
+  )
+)<initialization>
 
 == Loss
 As mentioned earlier we use gradient descent. For this we need a loss function. This loss functions consists of a few different components. Most importantly, the $L_1$ loss, formally defined as $||f-hat(f)||$. Besides this, we will also use the structural similarity index measure (SSIM). These will be weighed with $lambda$. The total loss for how well the image looks will be
@@ -775,80 +793,104 @@ Besides the actual representation, we have two other things that we want to disc
 
 The effects of small Gaussians is not directly apparent, seemingly the performance is roughly similiar.
 
-#subpar.grid(
-  columns: (1fr, 1fr, 1fr),
-  rows: (auto),
-  gutter: 10pt,
-  align: top,
+#figure(
   caption: [Comparing the size penalty, both representations are started with 1500 Gaussians, 100x100. ],
-  figure(
-    image("./images/castle_original.png", width: 100%),
-    caption: [
- Original castle image
-    ],
-  ),
-  figure(
-    image("./images/castle_base.png", width: 100%),
-    caption: [
- Base performance of the representation. \ SSIM: 0.0418
-    ],
-  ),
-  figure(
-    image("./images/castle_no_size_no_culling.png", width: 100%),
-    caption: [
- No sizing in loss, no culling. \ SSIM: 0.0471
-    ],
-  ),
+  grid(
+    columns: (1fr, 1fr, 1fr),
+    rows: (auto),
+    gutter: 10pt,
+    align: top,
+    figure(
+      kind: "subfigure-size-penalty",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_original.png", width: 100%),
+      caption: [
+  Original castle image
+      ],
+    ),
+    figure(
+      kind: "subfigure-size-penalty",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_base.png", width: 100%),
+      caption: [
+  Base performance of the representation. \ SSIM: 0.0418
+      ],
+    ),
+    figure(
+      kind: "subfigure-size-penalty",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_no_size_no_culling.png", width: 100%),
+      caption: [
+  No sizing in loss, no culling. \ SSIM: 0.0471
+      ],
+    ),
+  )
 )
 
 However when rendering the representations upscaled, the difference becomes apparant. Both images are trained in a 100x100 resolution, but the final render is upscaled to 150x150.
 
-#subpar.grid(
-  columns: (1fr, 1fr),
-  rows: (auto),
-  gutter: 10pt,
-  align: top,
+#figure(
   caption: [Comparing the upscaled renders of the representation. Not penalizing the size of the Gaussian clearly creates hidden artifacts],
-  figure(
-    image("./images/castle_base_upscaled.png", width: 100%),
-    caption: [
- Base performance of the representation, upscaled to 150x150.
-    ],
-  ),
-  figure(
-    image("./images/castle_no_size_no_culling_upscaled.png", width: 100%),
-    caption: [
- No sizing in loss, upscaled to 150x150.
-    ],
-  ),
+  grid(
+    columns: (1fr, 1fr),
+    rows: (auto),
+    gutter: 10pt,
+    align: top,
+    figure(
+      kind: "subfigure-size-upscaled",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_base_upscaled.png", width: 100%),
+      caption: [
+  Base performance of the representation, upscaled to 150x150.
+      ],
+    ),
+    figure(
+      kind: "subfigure-size-upscaled",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_no_size_no_culling_upscaled.png", width: 100%),
+      caption: [
+  No sizing in loss, upscaled to 150x150.
+      ],
+    ),
+  )
 )
 
 You will see the artifacts in the right image. These are not visible in the 100x100, as they are smaller than a pixel in the 100x100 render. This comes from the fact that the representation is infinitely detailed, but the rendering is a sampling of that representation. For each pixel, instead of the average over the whole pixel, only a specific spot within the pixel is picked. Taking the average is computationally expensive, and only shifts the same problem to the smaller level. These small Gaussians do influence the sample spots of the pixels, so removing them is not an option. This effect is also showcased in @subpixel-sampling.
 
-#subpar.grid(
-  columns: (1fr, 1fr),
-  rows: (auto),
-  gutter: 0pt,
-  align: top,
-  figure(
-    image("./images/sampling_example_high.png", width: 100%),
-    numbering: none,
-    caption: [
-      100x100
-    ],
-  ),
-  figure(
-    image("./images/sampling_example_low.png", width: 100%),
-    numbering: none,
-    caption: [
-      2x2
-    ],
-  ),
+#figure(
   caption: [
     The same Gaussian representation, sampled differently. In this implementation, the sampling happens at the bottom left corner. The bright yellow spot is not visible anymore.
   ],
-  label: <subpixel-sampling>
-)
+  grid(
+    columns: (1fr, 1fr),
+    rows: (auto),
+    gutter: 0pt,
+    align: top,
+    figure(
+      kind: "subfigure-sampling",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/sampling_example_high.png", width: 100%),
+      caption: [
+        100x100
+      ],
+    ),
+    figure(
+      kind: "subfigure-sampling",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/sampling_example_low.png", width: 100%),
+      caption: [
+        2x2
+      ],
+    ),
+  )
+)<subpixel-sampling>
 
 The problem with these subpixel Gaussians is that they will still contain information in the tokens, to keep these tokens pure and as close to the original image as possible, we want to remove this. 
 
@@ -856,29 +898,40 @@ To already penalize this in the training process, we will add the following loss
 
 The effect of anisotropic Gaussians is fairly similiar, as can be seen below.
 
-#subpar.grid(
-  columns: (1fr, 1fr, 1fr),
-  rows: (auto),
-  gutter: 10pt,
-  align: top,
+#figure(
   caption: [The same Gaussian representation, where shearing is not penalized in the loss. In the upscaled version the artifacts are clearly visible. The SSIM is 0.0396],
-  figure(
-    image("./images/castle_original.png", width: 100%),
-    caption: [
- Original castle image
-    ],
-  ),
-  figure(
-    image("./images/castle_no_shear_no_culling.png", width: 100%),
-    caption: [
- Representation without shearing loss, and no culling at 100x100. 
-    ],
-  ),
-  figure(
-    image("./images/castle_no_shear_no_culling_upscaled.png", width: 100%),
-    caption: [
- Representation without shearing loss, and no culling, upscaled to 150x150.
-    ],
+  grid(
+    columns: (1fr, 1fr, 1fr),
+    rows: (auto),
+    gutter: 10pt,
+    align: top,
+    figure(
+      kind: "subfigure-shearing",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_original.png", width: 100%),
+      caption: [
+  Original castle image
+      ],
+    ),
+    figure(
+      kind: "subfigure-shearing",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_no_shear_no_culling.png", width: 100%),
+      caption: [
+  Representation without shearing loss, and no culling at 100x100. 
+      ],
+    ),
+    figure(
+      kind: "subfigure-shearing",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_no_shear_no_culling_upscaled.png", width: 100%),
+      caption: [
+  Representation without shearing loss, and no culling, upscaled to 150x150.
+      ],
+    )
   )
 )
 
@@ -894,43 +947,57 @@ The amount of Gaussians have a significant impact on both the quality of the ima
 
 The base image we have been using uses 1500 Gaussians for 100x100, below are the effects doubling and halving that
 
-#subpar.grid(
-  columns: (1fr, 1fr, 1fr, 1fr),
-  rows: (auto),
-  gutter: 10pt,
-  align: top,
+#figure(
   caption: [Comparing different starting amount of Gaussians.],
-  figure(
-    image("./images/castle_original.png", width: 100%),
-    caption: [
- Original castle image
-    ],
-  ),
-  figure(
-    image("./images/castle_low_amount.png", width: 100%),
-    caption: [
- Representation with 750 Gaussians initialized  \
-*SSIM Loss:* 0.0770\
-*L1 Loss:* 0.0186
-    ],
-  ),
-  figure(
-    image("./images/castle_base.png", width: 100%),
-    caption: [
- Representation with 1500 Gaussians initialized\
- *SSIM Loss:* 0.0429\
-*L1 Loss:* 0.0131
-    ],
-  ),
-  figure(
-    image("./images/castle_high_amount.png", width: 100%),
-    caption: [
- Representation with 3000 Gaussians initialized\
-  *SSIM Loss:* 0.0088 \
-*L1 Loss:* 0.0056
+  grid(
+    columns: (1fr, 1fr, 1fr, 1fr),
+    rows: (auto),
+    gutter: 10pt,
+    align: top,
+    figure(
+      kind: "subfigure-amounts",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_original.png", width: 100%),
+      caption: [
+  Original castle image
+      ],
+    ),
+    figure(
+      kind: "subfigure-amounts",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_low_amount.png", width: 100%),
+      caption: [
+  Representation with 750 Gaussians initialized  \
+  *SSIM Loss:* 0.0770\
+  *L1 Loss:* 0.0186
+      ],
+    ),
+    figure(
+      kind: "subfigure-amounts",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_base.png", width: 100%),
+      caption: [
+  Representation with 1500 Gaussians initialized\
+  *SSIM Loss:* 0.0429\
+  *L1 Loss:* 0.0131
+      ],
+    ),
+    figure(
+      kind: "subfigure-amounts",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_high_amount.png", width: 100%),
+      caption: [
+  Representation with 3000 Gaussians initialized\
+    *SSIM Loss:* 0.0088 \
+  *L1 Loss:* 0.0056
 
-    ],
-  ),
+      ],
+    ),
+  )
 )
 
 Clearly the progression is visible, the representation initalized with 3000 Gaussians is almost identical for the naked eye. An important side not here is that the tokens grow exponentionally in terms of cost of the neural network. 
@@ -938,30 +1005,35 @@ Clearly the progression is visible, the representation initalized with 3000 Gaus
 == Culling
 In @culling, we already talked about how we will do the culling. We will also take a short look at how this works in practise. One of the big things that makes a difference is penalizing the size in the loss. If we do not this we get significantly worse results, and also a big reduction in Gaussians @culling-no-sizing. 
 
-#subpar.grid(
-  columns: (1fr, 1fr),
-  rows: (auto),
-  gutter: 0pt,
-  align: top,
-  figure(
-    image("./images/castle_base.png", width: 100%),
-    numbering: none,
-    caption: [
-      Base performance of the representation. Starts with 1500 Gaussians, end with 1417 Gaussians after culling.
-    ],
-  ),
-  figure(
-    image("./images/castle_no_size_culling.png", width: 100%),
-    numbering: none,
-    caption: [
-      Representation with culling, but no size in loss. Starts with 1500 Gaussians, end with 632 Gaussians. 
-    ],
-  ),
+#figure(
   caption: [
     Not penalizing sizing in the loss results in a worse performance after culling. This makes sense as the representation will count too much on small Gaussians during training, which will be removed afterwards. This is especially noticable for the gray areas, where there is a lack of Gaussians providing any color.
   ],
-  label: <culling-no-sizing>
-)
+  grid(
+    columns: (1fr, 1fr),
+    rows: (auto),
+    gutter: 15pt,
+    align: top,
+    figure(
+      kind: "subfigure-culling",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_base.png", width: 100%),
+      caption: [
+        Base performance of the representation. Starts with 1500 Gaussians, end with 1417 Gaussians after culling.
+      ],
+    ),
+    figure(
+      kind: "subfigure-culling",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_no_size_culling.png", width: 100%),
+      caption: [
+        Representation with culling, but no size in loss. Starts with 1500 Gaussians, end with 632 Gaussians. 
+      ],
+    ),
+  )
+)<culling-no-sizing>
 
 Furthermore, going back to @amount-of-gaussians, we can compare the start and end Gaussians.
 
@@ -980,32 +1052,43 @@ Furthermore, going back to @amount-of-gaussians, we can compare the start and en
 
 About 5% of the Gaussians are being removed. Almost all of these Gaussians are being removed based on color, i.e. they provide little to nothing to the color values.
 
-#subpar.grid(
-  columns: (1fr, 1fr, 1fr),
-  rows: (auto),
-  gutter: 10pt,
-  align: top,
+#figure(
   caption: [The same Gaussian representation, where shearing is not penalized in the loss. In the upscaled version the artifacts are clearly visible. The SSIM is 0.0396],
-  figure(
-    image("./images/castle_original.png", width: 100%),
-    caption: [
- Original castle image
-    ],
-  ),
-  figure(
-    image("./images/castle_base.png", width: 100%),
-    caption: [
- Base performance representation\
- *SSIM:* 0.0418
-    ],
-  ),
-  figure(
-    image("./images/castle_no_culling_sizing.png", width: 100%),
-    caption: [
- Base performance representation but without culling\
- *SSIM:* 0.0350
-    ],
-  ),
+  grid(
+    columns: (1fr, 1fr, 1fr),
+    rows: (auto),
+    gutter: 10pt,
+    align: top,
+    figure(
+      kind: "subfigure-shearing-upscaled",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_original.png", width: 100%),
+      caption: [
+  Original castle image
+      ],
+    ),
+    figure(
+      kind: "subfigure-shearing-upscaled",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_base.png", width: 100%),
+      caption: [
+  Base performance representation\
+  *SSIM:* 0.0418
+      ],
+    ),
+    figure(
+      kind: "subfigure-shearing-upscaled",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_no_culling_sizing.png", width: 100%),
+      caption: [
+  Base performance representation but without culling\
+  *SSIM:* 0.0350
+      ],
+    ),
+  )
 )
 
 While the performance is better in terms of the SSIM, however we see the same issues as in @artifacts.
@@ -1013,69 +1096,92 @@ While the performance is better in terms of the SSIM, however we see the same is
 == Higher order Gaussians
 To see the performance and the influence of the higher order Gaussians, we remove the $phi_0$ and only render $phi_{1,2}$. Looking at the previous comparison we can clearly see the lines and edges in the image.
 
-#subpar.grid(
-  columns: (1fr, 1fr, 1fr, 1fr),
-  rows: (auto),
-  gutter: 10pt,
-  align: bottom,
+#figure(
   caption: [Comparing the accents of different amount of Gaussians. The lines and edges of the castle are more visible with more Gaussians.],
-  figure(
-    image("./images/castle_original.png", width: 100%),
-    caption: [
- Original castle image
-    ],
-  ),
-  figure(
-    image("./images/castle_accent_low_amount.png", width: 100%),
-    caption: [
- Accents with 750 Gaussians initialized 
-    ],
-  ),
-  figure(
-    image("./images/castle_accent_base.png", width: 100%),
-    caption: [
- Accents with 1500 Gaussians initialized
-    ],
-  ),
-  figure(
-    image("./images/castle_accent_high_amount.png", width: 100%),
-    caption: [
- Accents with 3000 Gaussians initialized
-    ],
-  ),
+  grid(
+    columns: (1fr, 1fr, 1fr, 1fr),
+    rows: (auto),
+    gutter: 10pt,
+    align: top,
+    figure(
+      kind: "subfigure-accents-castle",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_original.png", width: 100%),
+      caption: [
+  Original castle image
+      ],
+    ),
+    figure(
+      kind: "subfigure-accents-castle",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_accent_low_amount.png", width: 100%),
+      caption: [
+  Accents with 750 Gaussians initialized 
+      ],
+    ),
+    figure(
+      kind: "subfigure-accents-castle",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_accent_base.png", width: 100%),
+      caption: [
+  Accents with 1500 Gaussians initialized
+      ],
+    ),
+    figure(
+      kind: "subfigure-accents-castle",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/castle_accent_high_amount.png", width: 100%),
+      caption: [
+  Accents with 3000 Gaussians initialized
+      ],
+    ),
+  )
 )
 
 You can clearly see where the image has more fidelity, and see the outlines of the castle. This effect is a lot stronger with more Gaussians. 
 
-#subpar.grid(
-  columns: (1fr, 1fr, 1fr),
-  rows: (auto),
-  gutter: 10pt,
-  align: top,
+#figure(
   caption: [Comparing the accents of different amount of Gaussians. The lines and edges of the cars and the curb are more visible with more Gaussians.],
-  figure(
-    image("./images/cars_original.png", width: 100%),
-    caption: [
- Original castle image
-    ],
-  ),
-  figure(
-    image("./images/cars_accent_base.png", width: 100%),
-    caption: [
- Accents with 1500 Gaussians initialized
-    ],
-  ),
-  figure(
-    image("./images/cars_accent_high_amount.png", width: 100%),
-    caption: [
- Accents with 3000 Gaussians initialized
-    ],
-  ),
+  grid(
+    columns: (1fr, 1fr, 1fr),
+    rows: (auto),
+    gutter: 10pt,
+    align: top,
+    figure(
+      kind: "subfigure-accents-cars",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/cars_original.png", width: 100%),
+      caption: [
+  Original castle image
+      ],
+    ),
+    figure(
+      kind: "subfigure-accents-cars",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/cars_accent_base.png", width: 100%),
+      caption: [
+  Accents with 1500 Gaussians initialized
+      ],
+    ),
+    figure(
+      kind: "subfigure-accents-cars",
+      numbering: "(a)",
+      supplement: "",
+      image("./images/cars_accent_high_amount.png", width: 100%),
+      caption: [
+  Accents with 3000 Gaussians initialized
+      ],
+    ),
+  )
 )
 
 On the cars image containing more edges, this effect is more clearly visible.
-
-
 
 = Conclusion
 In this thesis, we have looked an alternative tokenization of images for transformer models using Lie theory and Gaussian splatting. We noticed that $Aff^+$ provides a good geometric representation of Gaussians. Unfortunately, the canonical vector space parameterization of Lie groups, Lie algebras, are not suitable. Therefore, we have derived an alternative parametrization that can be better used. 
