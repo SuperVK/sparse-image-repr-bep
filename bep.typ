@@ -132,29 +132,44 @@ In the last few years, AI and machine learning have become increasingly importan
 Recently, another model has become prevalent: the transformer @vaswani2023attentionneed.
 Transformer take tokens as inputs, in most cases, these tokens are words. The transformer can predict new tokens, leading to generative models. It was discovered that you can serialize an image into patches of 16x16 pixels and use those as tokens to train transformers successfully @dosovitskiy_image_2021. Initially outperforming "classical" CNNs, later the optimizations in the transformers have been backported to CNN @liu2022convnet2020s. In this thesis however, we will focus on transformers instead of CNNs, specifically the generation of tokens for transformers.
 
-Ideally, we can find a set of tokens that describe an image, similar to how a set of words describes a sentence or text. While text tokens can encode grammatical or contextual information, image tokens should capture geometric information. Currently the 16x16 patches do not contain a lot of geometrical information. This is also described in @dosovitskiy_image_2021, where we can see that attention of a token is mostly on tokens that are on the same row/column axis. This is most likely because of the embedding, instead of the actual relevance of those tokens.
+Ideally, we can find a set of tokens that describe an image, similar to how a set of words describes a sentence or text. While text tokens can encode grammatical or contextual information, image tokens should capture geometric information. Currently the 16x16 patches do not contain any geometrical information. This is reintroduced in the embedding, but the way this is done is unstable and unpredictable for any transformation done on the tokens by the transformer. It also does not match the Euclidean geometry that we expect from images. This is also described in @dosovitskiy_image_2021, where we can see that attention of a token is mostly on tokens that are on the same row/column axis. This is more likely because of the embedding, instead of the actual relevance of those tokens.
 
-One way to generate such tokens is Gaussian splatting. This has popularized in 2023 and is being used for 3D scene reconstruction @kerbl20233d. By taking multiple pictures and spawning Gaussian blobs in 3D to match each view, resulting in a 3D scene represented by Gaussians. This is done using gradient descent to train the scenes to iteratively better match each image, using L1 and SSIM loss. Recently, Gaussian splatting has also been used in 2D for image representation @zhang_gaussianimage_2025. This works essentially by only taking only one image, and training for that single image. This process works a lot simpler as quite a few complication for 3D do not have to be made anymore. Besides encoding tokens for transformers, 2D Gaussian splatting can also be used in scenarios where encoding is done once and decoding is done multiple times, such as textures for video games. 
+One way to generate such tokens is Gaussian splatting. This has popularized in 2023 and is being used for 3D scene reconstruction @kerbl20233d. By taking multiple pictures and spawning Gaussian blobs in 3D to match each view, resulting in a 3D scene represented by Gaussians. This is done using gradient descent to train the scenes to iteratively better match each image, using L1 and SSIM loss. Recently, Gaussian splatting has also been used in 2D for image representation @zhang_gaussianimage_2025. This works essentially by only taking only one image, and training for that single image. This process works a lot simpler as quite a few complication for 3D do not have to be made anymore. Besides encoding tokens for transformers, 2D Gaussian splatting can also be used in scenarios where compression is done once and decompression is done multiple times, such as textures for video games. Finally, 2D Gaussian splatting also has applications in super-resolution, i.e. upscaling images.
 
-Tokenization of Gaussian parameters has already been studied @dong_gaussiantoken_2025. In this thesis we aim to provide more geometric value to these tokens by using Lie theory. Furthermore, we hope to use more complex wavelets to encode more information in a single token. As each token has attention to all other tokens, transformer networks grow exponentionally, limiting the amount of tokens is thus key to smaller networks. We hope to use first and second order derivatives of the Gaussian function to define edges and lines more effeciently than a normal Gaussian can.
+Tokenization of Gaussian parameters has already been studied @dong_gaussiantoken_2025. In this thesis we aim to provide more geometric value to these tokens by using Lie theory. Furthermore, we hope to use more complex wavelets to encode more information in a single token. As each token has attention to all other tokens, transformer networks scale quadratically, limiting the amount of tokens is thus key to smaller networks, limiting the needed memory and compute. We hope to use first and second order derivatives of the Gaussian function to define edges and lines more efficiently than a normal Gaussian can.
 
 = Theory
+
 We are expanding the Gaussian splatting method with an explicit geometric description in terms of a Lie group, as well as using higher order derivatives to more efficiently encode edges and lines.
+
+Concretely, we have some image $f : RR^2 mapsto RR^3$ (or more precisely $f : [0, H] times [0, W] mapsto [0,1]^3$) which we want to approximate with Gaussians functions. This representation will look like
+$
+  f approx sum c_i e^(-||x-y_i||^2_A).
+$<gaussian-splatting>
+
+This representation is already used for various applications such as superresolution (source), high-fps rendering, data compression. Our goal is to create a sparse representation that holds geometric information, such that we can use it as image tokenization for transformer models.
+
+To retain geometric information as well as possible, we will use Lie groups to position the Gaussians. The representation will then look similiar to 
+$
+  f approx sum c_i (g_i act e^(-||x||^2)).
+$<gaussian-lie-splatting>
+We can see that @eq:gaussian-lie-splatting is equivalent to @eq:gaussian-splatting in terms of the goal it achieves, but the way we represent the parameters is key to retaining geometric information in the transformer. 
+
 
 // We will spawn $n$ initial Gaussians, each of which will represent one token, and each token will have $p$ (tbd) parameters that describe the color values of the Gaussian layers and the geometric properties such as location, rotation, and scale. 
 
 == Gaussian layers
-Instead of using just the Gaussian function as is usual in Gaussian splatting, we will also use the first and second order derivatives of the Gaussian function. As defined as
+Instead of using just the Gaussian function as is usual in Gaussian splatting, we will also use the first and second order derivatives of the Gaussian function. This is defined as
 
 $
  phi_0(x) := e^(-||x||^2) \
  hat(phi)_1 = (dif) / (dif x_1) phi_0 \
  hat(phi)_2 = (dif) / (dif x_1) phi_1 
-$
+$<unscaled-gaussians>
 
 Please note that the choice of variable ($x_1$ or $x_2$) for the derivative does not matter, as the axes are orthogonal and the function can be rotated by $90 deg$ to get the other derivative.
 
-This will give us more complex features to work with. These three Gaussians will be layered in the same location. Below, we can see the derivatives when they are unscaled. 
+This will give us more complex features to work with. These three Gaussians will be layered in the same location. Below, we can see the derivatives when they are unscaled.
 #todo-box[
  Add color scale
 ]
@@ -162,7 +177,7 @@ This will give us more complex features to work with. These three Gaussians will
 #figure(
   image("./images/gaussian_derivatives_unscaled.png", width: 50%),
   caption: [
- Unscaled (f.l.r): Gaussian ($phi_0$), first-order derivative ($hat(phi)_1$) and second-order derivative ($hat(phi)_2$) of a Gaussian.
+ Unscaled (f.l.r.): Gaussian ($phi_0$), first-order derivative ($hat(phi)_1$) and second-order derivative ($hat(phi)_2$) of a Gaussian, defined in @eq:unscaled-gaussians.
   ],
 )
 
@@ -173,17 +188,24 @@ Layering these as is will not result in a good overlap, however, because the "su
 #figure(
   image("./images/gaussian_derivatives_scaled.png", width: 50%),
   caption: [
- Scaled: Gaussian ($phi_0$), first-order derivative ($phi_1$), and second-order derivative ($phi_2$) of a Gaussian.
+ Scaled (f.l.r.): Gaussian ($phi_0$), first-order derivative ($phi_1$), and second-order derivative ($phi_2$) of a Gaussian.
   ],
 )
 
-Each of these Gaussians has an independent set of color values. $c^(i,j)$, $i$ for each the Gaussian layers, and $j$ for the color channels, totalling 9 values. Each color value is not directly the color that the Gaussian attains, but rather an addition or subtraction in a certain direction for the final color. For each pixel color $p c in [0,1]^3$, we start with a default of $0.5$. This has the advantage that the image is color invertible by multiplying all the color values by $-1$, but also does not introduce an implicit bias to the color black, as opposed to white (or vice versa). Therefore, the color values of the Gaussians can attain any value in $RR$, however, most likely they will be pushed between $[-0.5, 0.5]^3$ as the input image contains only values between $[0, 1]^3$. This will be elaborated on later.
+Each of these Gaussians has an independent set of color values. $c^(i,j) in RR$, $i in {0,1,2}$ for each the Gaussian layers, and $j in {1, 2, 3}$ for the color channels, totalling 9 values. Each color value is not directly the color that the Gaussian attains, but rather an addition or subtraction in a certain direction for the final color. For each pixel color $p c in [0,1]^3$, we start with a default of $0.5$. This has the advantage that the image is color invertible by multiplying all the color values by $-1$, but also does not introduce an implicit bias to the color black, as opposed to white (or vice versa). Therefore, the color values of the Gaussians can attain any value in $RR$, however, most likely they will be pushed between $[-0.5, 0.5]^3$ as the input image contains only values between $[0, 1]^3$, any overflow will be automatically clipped. This will be elaborated on later. 
+
+#todo-box[hier even naar kijken, in principe hebben we het later niet meer over kleuren, maar het zou wel net zijn om dat in de resultaat wel te doen]
+
+Finally, the function in @eq:gaussian-lie-splatting will then be approximated by 
+$
+  f approx sum c^i_0 (g_i act phi_0) + c^i_1 (g_i act phi_1) + c^i_2 (g_i act phi_2).
+$
 
 == Lie groups
-This component for position, rotation, and scale should ideally be a Lie group. As this means our representation can benefit from all the structure and tools that Lie groups provide.
+The component for position, rotation, and scale should ideally be represented by a Lie group. As this means our representation can benefit from all the structure and tools that Lie groups provide. Specifically we will ook at Affine groups.
 
 === Affine group
-Such a group $G$ is defined as follows. 
+A group $G$ that covers all positions, rotation and scaling is defined as follows. 
 
 #definition(title: [The affine group with positive determinants])[
 The _2-dimensional, real affine group with positive determinants_ is defined as
@@ -192,11 +214,11 @@ G =Aff^+(RR^2) := RR^2 times.r GL^+(RR^2)
 $
 with the group operation given by
 $
-(x_2,A_2)(x_1,A_1) := (A_2 x_1 + x_2, A_2 A_1)
+(x_1,A_1)(x_2,A_2) := (A_1 x_2 + x_1, A_1 A_2)
 $
-for all $(x_2,A_2), (x_1, A_1) in Aff^+(RR^2)$.
+for all $(x_1,A_1), (x_2, A_2) in Aff^+(RR^2)$.
 ]
-Where $GL^+(RR^2)$ is the group of 2-dimensional real linear transformations with positive determinants, i.e. $2 times 2$ matrices with positive determinant. This positive determinant ensures that the transformation does not flip the image, as the Gaussians and their derivatives are symmetric, which is not needed. Furthermore, this also causes the group to consistent of two seperate components which we cannot move between in a continious fashion. Intuitively, you can rotate continously, you cannot flip an image continously. Later, this will also make mathematical sense, when we decompose $GL+(RR^2)$ into a rotational matrix and a positive definite symmetric matrix, which is only possible with a positive determinant.
+Where $GL^+(RR^2)$ is the group of 2-dimensional real linear transformations with positive determinants, i.e. $2 times 2$ matrices with positive determinant. This positive determinant ensures that the transformation does not flip the image, as the Gaussians and their derivatives are symmetric, which redundant. Furthermore, this also causes the group to consist of two seperate components which we cannot move between in a continious fashion. Intuitively, you can rotate continously, but you cannot flip an image continously. Later, this will also make mathematical sense, when we decompose $GL^+(RR^2)$ into a rotational matrix and a positive definite symmetric matrix, which is only possible with a positive determinant.
 
 #lemma[
 The unit element of $G$ is $(0, I)$, the inverse of any $(x, A) in G$ is $(-A^(-1)x, A^(-1))$ and the $G$ has a dimension of 6.
@@ -207,9 +229,9 @@ _Proof:_
 Let $(x, A) in G$.
 
 The unit element is $(0, I)$, as
-$(x, A)(0, I) = (A 0 + x, A I) = (x, A)$.
+$(x, A)(0, I) = (A 0 + x, A I) = (x, A)$ \ and $(0, I)(x, A) = (I x + 0, I A) = (x, A)$.
 
-The inverse is $(-A^(-1)x, A^(-1))$ as $(x, A)(-A^(-1)x, A^(-1)) = (-A A^(-1)x + x, A A^(-1)) = (0, I)$.
+The inverse is $(-A^(-1)x, A^(-1))$ as $(x, A)(-A^(-1)x, A^(-1)) = (-A A^(-1)x + x, A A^(-1)) = (0, I)$ \ and $(-A^(-1)x, A^(-1))(x, A) = (A^(-1) x - A^(-1) x, A^(-1) A) = (0, I)$.
 
 The dimension is trivial.
 
@@ -238,7 +260,7 @@ g act S := { g act y | y in S }
 .
 $
 
-This allows us to use this Lie group to position points in our image. The next thing to consider is that the Gaussians we use to fill our image are not one point, but a collection of points defined by a function in $RR^2$. Therefore, we will also need to define how this group acts on a function on $RR^2$. This is induced as follows: 
+This allows us to use this Lie group to position Gaussians in our image. The next thing to consider is that the Gaussians we use to fill our image are not one point, but a collection of points defined by a function in $RR^2$. Therefore, we will also need to define how this group acts on a function on $RR^2$. This is induced as follows: 
 
 Let $f:RR^2 -> RR$ then we define $g act f : RR^2 -> RR$ by
 $
@@ -275,33 +297,40 @@ $
 
 
 === Lie groups & parameter space
-This works quite well for positioning the Gaussians in some particular spot. However, to make this match our target image, we will use gradient descent, as will be explained later. This requires the parameters to lie in a vector space. This is not the case by default for the Lie group. This means that when applying gradient descent at the current stage, the parameters could no longer be in the Lie group after gradient descent steps. This means that this parameter has no longer any useful meaning, and cannot be used to position the Gaussian. 
+This works quite well for positioning the Gaussians with some particular translation, scaling and rotation. However, to find the set of group elements such that this matches our target image, we will use gradient descent, as will be explained later. This requires the parameters to lie in a vector space. This is not the case by default for the Lie group. This means that when naively applying gradient descent on $Aff^+$ as subset of $RR^6$, the parameters could no longer be in the Lie group after gradient descent steps. For example the determinant could turn negative, leaving the group. This means that this parameter has no longer any useful meaning, and cannot be used to position the Gaussian. 
 
-For this reason, we will search for a parameter space, $V$, such that $V$ is a vector space, and there exists a surjective function $psi : V -> G$. We can use this to apply gradient descent on $V$, as this is a vector space, and render the image using $G$. 
+For this reason, we will search for a parameter space, $V$, such that $V$ is a vector space, and there exists a surjective function $psi : V -> G$. As $V$ is a vector space, we can apply gradient descent on $V$, use $psi$ to map $V$ to $G$ and render the image using $G$. 
 
 
 === The Lie algebra $aff(RR^2)$
-To solve this issue, we will make use of the Lie algebra. This is the tangent space at the identity of the Lie group. The Lie algebra can map to the Lie group (and vice versa), but is also a vector space.
+To solve this issue, we would like to make use of the Lie algebra. This is the tangent space at the identity of the Lie group. The Lie algebra can be mapped into the Lie group (and vice versa), but is also a vector space.
 
 The Lie algebra of $Aff^+(RR^2)$ is $aff(RR^2) := RR^2 times.r gl(RR^2) equiv RR^2 times.r RR^(2 times 2)$.
 Note that we say $aff$ and not $aff^+$; this is because $aff$ is the Lie algebra of both the $Aff^+$ and $Aff$ Lie groups, illustrating that there is not a one-to-one relationship between Lie groups and Lie algebras.
 
 #lemma[
-The Lie group $Aff^+(RR^2)$ and Lie algebra $aff(RR^2)$ both have a matrix representation, respectively these are
+The Lie group $Aff^+(RR^2)$ has a matrix representation, defined as
 $
-  mat(
+  (x, A) mapsto mat(
  A, x;
  0, 1
-  )  "and" 
-        mat(
+  ).
+$
+
+The Lie algebra $aff(RR^2)$ has a corresponding matrix representation, defined as
+$
+  (v, W) mapsto mat(
  W, v;
  0, 0
   ).
 $
-This representation of the Lie group still follows the group operation, by doing the matrix multiplication.
+
+// This representation of the Lie group still follows the group operation, by doing the matrix multiplication.
 ]
 
 _Proof:_
+
+We need to show that representation of the Lie group preserves the group product.
 
 Let $(x_1, A_1), (x_2, A_2) in Aff^+(RR^2)$.
 
@@ -331,7 +360,7 @@ $qed$
 // _The following is a bit unclear to me, especially where the definition of the exponential map comes from_ -> kijk naar boek van Hall
 // #quote-box[
 Lie groups and Lie algebras are related to each other through the exponential map.
-For our case the exponential map $exp_(Aff^+(RR^2)) : aff(RR^2) -> Aff^+(RR^2)$ is given by $exp$.
+For our case the exponential map $exp_(Aff^+(RR^2)) : aff(RR^2) -> Aff^+(RR^2)$ is given by exponent function.
 
 Doing this for $W$ and $v$ seperately is equivalent to $
 exp( (v,W) )
@@ -339,12 +368,12 @@ exp( (v,W) )
 ( (integral_0^1 e^(t W) dif t) v, e^W ).
 $<eq:affine-exp>
 
-Unfortunately, from @culver1966existence we know that the $Aff^+$ exponential map is not surjective. So we cannot use $aff$ to create every possible Gaussian. Besides the fact that it is not surjective, is the integral also a problem. This means that the function is not a convenient closed formula, but instead requires a lot of computation.
+Unfortunately, from @culver1966existence we know that the $Aff^+$ exponential map is not surjective. So we cannot use $aff$ to create every possible Gaussian. Besides the fact that it is not surjective, is the integral also a problem. This means that the function is not a convenient closed formula, but instead must be computed numerically.
 
 
 == Kaji-Ochiai parameterization
 
-As we cannot use the default Lie algebra $aff$ from the Lie group $Aff^+$ as $V$, we will need to look a bit further. We adapt the findings from @kaji_concise_2016, where they describe a parameterization of $Aff^+(RR^3)$, where this parameterization has a similar role as the Lie algebra. This parameterization is for a 3D affine transformation; it starts from what is essentially the Lie algebra but constructs a different surjective mapping than the exponential onto the group (but still closely related). We will simplify this parametrization to 2 dimensions. 
+As using the default Lie algebra $aff$ from the Lie group $Aff^+$ as our parameter space will limit us a lot, we will need to look a bit further. We adapt the findings from @kaji_concise_2016, where they describe a parameterization of $Aff^+(RR^3)$, where this parameterization has a similar role as the Lie algebra. This parameterization is for a 3D affine transformation; it starts from what is essentially the Lie algebra but constructs a different surjective mapping than the exponential onto the group (but still closely related). We will simplify this parametrization to 2 dimensions. 
 
 
 
@@ -364,7 +393,7 @@ equiv
 RR^6
 $
 where $RR^2$ encodes the translation generator, $so(2)$ the rotation generator and $symm(2)$ the scale and shearing generator.
-Here $so(2)$ is the Lie algebra of $SO(2)$ and is given by the real $2 times 2$ anti-symmetric matrices, and so has only a single degree of freedom:
+Here $so(2)$ is the Lie algebra of the rotation group $SO(2)$ and is given by the real $2 times 2$ anti-symmetric matrices, and so has only a single degree of freedom:
 $
 so(2) = { mat(0, -r; r, 0) mid(|) r in RR }.
 $
@@ -373,6 +402,8 @@ $
 [A,B]^T = (A B - B A)^T = B^T A^T - A^T B^T = - (A^T B^T - B^T A^T) = -[A,B]
 $
 for all $A,B in symm(2)$.
+
+#todo-box[example]
 
 The vector space $symm(2)$ has three degrees of freedom:
 $
@@ -484,18 +515,22 @@ $
 
 
 == A note on shearing
-Shearing is the changing of the angle of the orthogonal base vectors of the space. No shearing with respect to ${e_1, e_2}$ implies that $A e_1^T A e_2 = 0$. In our case $e_1 := (1, 0)^T$ and $e_2 := (0, 1)^T$. This shearing can have some interesting properties, so we will take a closer look to see if we want this or if we want to exclude this from the Gaussian transformations.
+Shearing is the changing of the angle of the orthogonal base vectors of the space. No shearing with respect to ${e_1, e_2}$ implies that $(A e_1)^T A e_2 = 0$. In our case $e_1 := (1, 0)^T$ and $e_2 := (0, 1)^T$. This shearing can have some interesting properties, so we will take a closer look to see if we want this or if we want to exclude this from the Gaussian transformations.
 
 Dissecting the polar decomposition from earlier, we can see that $R in SO(2)$ does rotation, and $S in SPD(2)$ does scaling and this shearing. 
 
 We define $S$ as 
 $
- S = mat(s_1, s_3; s_3, s_2)
-$.
+ S = mat(s_1, s_3; s_3, s_2).
+$
+
+#todo-box[
+  Visual example
+]
 
 Then we can see that $s_3$ generates shearing, as when $s_3 = 0$ then we have $(S e_1)^T (S e_2) = (s_1, 0) (0, s_2)^T = 0$. And vice versa, if $s_3 != 0$, then $(S e_1)^T (S e_2) = (s_1, s_3) (s_3, s_2)^T = s_1 s_3 + s_3 s_2 != 0$ as $ s_1, s_2 > 0$, clearly introducing a shear.
 
-We know that the stabilizer of $phi_0$ is $SO(2)$. I.e.
+We know that the stabilizer of $phi_0$ is $SO(2)$. This makes sense as rotating an unscaled Gaussian while give us that exact same Gaussian. I.e.
 $
   "Stab"_G (phi_0) := { g in G | g act phi_0 = phi_0 } equiv SO(2)
 $
@@ -515,13 +550,13 @@ _Proof:_
 
 // First, we know that any $S in SPD(2)$ can be generated by $R in SO(2)$ and $hat(S) in D$ where $D$ is all diagonal matrices. This is an eigendecomposition, defined as the following $S = R^T hat(S) R$.
 
-We know that $A = R S$, then we can do an Eigendecomposition and decompose $S$ as
+We know that $A = R S$, then we can do an eigendecomposition and decompose $S$ as
 
 $
  S = Q Lambda Q^T.
 $
 
-Where $Lambda = mat(lambda_1, 0; 0, lambda_2)$ with $lambda_{1,2}$ as the Eigenvalues from S. $Q in O(2)$, however we can flip the Eigenvalues in the decomposition when $det(Q) = -1$, therefore without loss of generality $Q in SO(2)$.
+Where $Lambda = mat(lambda_1, 0; 0, lambda_2)$ with $lambda_{1,2}$ as the eigenvalues from S. $Q in O(2)$, however we can flip the eigenvalues in the decomposition when $det(Q) = -1$, therefore without loss of generality $Q in SO(2)$.
 
 This means that we get the following.
 
@@ -536,7 +571,7 @@ $qed$
 
 #proposition(title: "Polar decomposition ordering")[
 
- Reversing rotational and scaling in the parametrization of Kaij-Ochiai will remove the geometric properties of $s_3$.
+ Reversing rotational and scaling in the parametrization of Kaij-Ochiai will remove the geometric interpretation of $s_3$ as the amount of shearing with respect to ${e_1,e_2}$.
  I.e. 
  $
  A(r, s_1, s_2, 0) = exp mat(0, -r; r, 0) exp mat(s_1, 0; 0, s_2)
@@ -561,9 +596,9 @@ $
 $ 
 and
 $
- S = mat(exp(s 1), 0; 0, exp(s 2))
+ S = mat(exp(s_1), 0; 0, exp(s_2))
 $
-applied as $R S x$ results in $e_1 e_2^T = 0$.
+applied as $R S$ results in $e_1 e_2^T = 0$.
 
 We can see this by
 $
@@ -576,7 +611,7 @@ $
   
 $
 
-It is also true that for $B = S R$, applying $S R x$ in the other order can result in shearing; we will show this with an example.
+It is also true that for $B = S R$, applying $S R$ in the other order can result in shearing; we will show this with an example.
 
 Define 
 $
@@ -592,11 +627,11 @@ $(S R e_1)^T (S R e_2) = - 3/2 != 0$
 
 $qed$
 
-And thus we can see that the parametrization is still surjective with $s_3 = 0$. We can therefore remove this in the parameter space $V equiv RR^5$. We can still map this using $psi$, however, this will no longer map to $Aff^+$, but a subset of that where there exists no shearing. This subset is not a group.
+And thus we can see that the parametrization is still surjective with $s_3 = 0$ for 0-th order Gaussians and other radially symmetric wavelets. We can therefore remove this in the parameter space $V equiv RR^5$. We can still map this using $psi$, however, this will no longer map to $Aff^+$, but a subset of that where there exists no shearing. This subset is not a group.
 
 #corollary[
 
- Define $T subset GL^+(RR^2)$. $T := {A in GL^+(RR^2) | (A e_1)^T A e_2 = 0}$. Then T is not a group.
+ Define $T subset GL^+(RR^2)$ as $T := {A in GL^+(RR^2) | (A e_1)^T A e_2 = 0}$, then T is not a group.
 ]
 
 // _Proof:_
@@ -613,11 +648,15 @@ Intuitively, the previous results make sense as the rotational symmetry of $phi_
 #figure(
   image("./images/scale-rotate_vs_shear.png", width: 50%),
   caption: [
- Left: Shearing via scale & rotate, $s_3=0$ | Right: Shearing via setting $s_3$
+ Left: Shearing via scale & rotate, $s_3=0$ | Right: Shearing via setting $s_3$ \ We notice that shearing only has effects on $phi_1$ and $phi_2$.
   ]
 )
 
 While this is not exactly the same, and for $phi_{1,2}$ parameterization with $s_3=0$ is no longer surjective, however, removing this property would give us some better analysis on the anisotropy#footnote[Anisotropy is how "stretched" an ellipsoid, or in our case a Gaussian, is. We will see later why this is useful] of a Gaussian, as the anisotropy is now uniquely generated by the scaling parameters. However, we will need to do some experiments if the shear property has a significant impact on the first and second derivatives. 
+
+#todo-box[
+  Hier ff naar kijken
+]
 
 = Methods
 We will look at the methods that we will be using to actually create the Gaussians representations. 
@@ -630,14 +669,15 @@ The target image we want to approximate is defined as $f(x) : RR^2 -> RR^3$.
 The final image that is generated from the parameters is defined by
 
 $
-hat(f)(x) = sum_(k = 0)^n sum_(i)^3 c_k^(i) (g_k act phi.alt)(x) = sum_(k = 0)^n sum_(i)^3 c_k^(i) (psi(v_k) act phi)(x)
+hat(f)(x) = sum_(k = 0)^n sum_(i)^3 c_k^(i) (g_k act phi.alt)(x) = sum_(k = 0)^n sum_(i)^3 c_k^(i) (psi(v_k) act phi)(x).
 $
 
 // Where $c equiv RR^9$ and $v equiv RR^5$ or $v equiv RR^6$ depending on the inclusion of the shearing parameter 
 
 // The group actions are defined by for $g in Aff^+(2), y in RR^2$ then $g act y = (A, x) act y := A y+ x$
+Where $c_k^i in RR^3$ and $g_k in G$.
 
-To find the optimal parameters $c$ and $v$, we will use gradient descent as explained earlier. For this, we will define a score, called a loss, that determines how well a set of parameters represents the image. Taking steps downwards of the gradient will find us a local minimum. Using extra methods such as optimizers, scheduler, and modifying the loss, we will make sure that minimum found is as close to the global minimum as possible.
+To find the optimal parameters $c$ and $v$, we will use gradient descent as explained earlier. For this, we will define a score, called a loss, that determines how well a set of parameters represents the image. Taking steps downwards of the gradient will find us a local minimum. Using extra methods such as optimizers, scheduler, and modifying the loss, we can further increase the quality of the minimum that was found.
 
 // $G = "Aff"^+ (2)$
 
@@ -654,22 +694,22 @@ To find the optimal parameters $c$ and $v$, we will use gradient descent as expl
 // - sin(b), cos(b))$
 
 == Culling<culling>
-As we want to decrease the number of Gaussians that we save, we will remove the Gaussians based on their parameters. This process we will call culling. The most obvious is that we would like to remove Gaussians where the color values are negligibly small for all Gaussian layers. Formalized by 
+As we want to decrease the number of Gaussians that we save, we will remove the Gaussians based on their parameters. This process we will call culling. #todo-box[cite Gaussian splaating paper that also calls it culling] The most obvious is that we would like to remove Gaussians where the color values are negligibly small for all Gaussian layers. Formalized by 
 $
 sum_j^3 abs(c^(1,j)) <= 0.05 and sum_j^3 abs(c^(2,j)) <= 0.05 and sum_j^3 abs(c^(3,j)) <= 0.05.
 $
 
-The other criterion is again the anisotropy of the Gaussian, as mentioned earlier. Formally, we do this by removing all Gaussians where
+The other criterion is the size of the Gaussian. Formally, we do this by removing all Gaussians where
 $
  s 1 + s 2 <= -7.5.
 $
 
-The problem is that these Gaussians are visible, so doing this culling after all training is done would leave some gaps in the image. Therefore, we do this on 80% of the training, thus giving the gradient descent still some iterations to recover and fill the gaps.
+The problem is that these Gaussians are still visible, so doing this culling after all training is done could leave some gaps in the image. Therefore, we do this on 80% of the training, thus giving the gradient descent still some iterations to recover and fill the gaps.
 
 = Results
-To put this into practice, we use pytorch to make use of CUDA kernels and speed up the rendering. The source code is available at (). The images are constrained to 1:1 to ease the implementation; the theory can be easily scaled to any ratio. The resolution can differ, depending on the input. For the experiments, mostly 100x100 resolutions are used, as this is a limitation of the physical hardware on which the tests were run. 
+  To put this into practice, we use pytorch to make use of CUDA kernels and speed up the rendering. The source code is available on GitHub#footnote[https://github.com/SuperVK/sparse-image-repr-bep] The images are constrained to 1:1 to ease the implementation; the theory can be easily scaled to any ratio. The resolution can differ, depending on the input. For the experiments, mostly 100x100 resolutions are used, as this is a limitation of the physical hardware on which the tests were run. Higher resolution images would use more VRAM. 
 
-The hardware used is an `Intel(R) Core(TM) i7-10750H (12) @ z` and `NVIDIA Quadro T1000 Mobile`; on this hardware, training took between 1 minute and 5 minutes. However, this is not a goal of the project.
+The hardware used is an `Intel(R) Core(TM) i7-10750H (12) @ z` and `NVIDIA Quadro T1000 Mobile`; on this hardware, training took between 1 minute and 5 minutes. However, minimising the training time is not a goal of the project.
 
 In this section, we will discuss the results and adaptations we have made based on the findings. We will first present the final product, which includes all the adaptations, which we will use as our base performance to compare against. 
 
@@ -692,8 +732,8 @@ In this section, we will discuss the results and adaptations we have made based 
 )
 
 
-== Initalization
-For the initialization, we use a hyperparameter for the number of Gaussians that will be spawned. The color parameters of $phi_0$ will be initialized with a normal distribution $N(0,1)$, for $phi_1$ and $phi_2$, this is $N(0,0.1)$. This prevents the first and second orders from being too active. The position of the Gaussians is also initialized with $N(0,1)$. The scaling parameters are also generated with $N(0,1)$ but immediately shifted down by $-4$. If this is not done, the Gaussians will overlap too much and fight against each other, resulting in streaks. This can be seen below.
+== Initialization
+For the initialization, we use a hyperparameter for the number of Gaussians that will be spawned. The color parameters of $phi_0$ will be initialized with a normal distribution $N(0,1)$, for $phi_1$ and $phi_2$, this is $N(0,0.1)$. I.e. $c^(0 j)_k ~ N(0, 1)$ and $c^(i j)_k ~ N(0, 1)$ for $i in {1,2}$. This prevents the first and second orders from being too active. The position of the Gaussians is also initialized with $N(0,1)$. The rotational parameter $r$ is generated between 0 and $2 pi$ uniformely. The scaling parameters are also generated with $N(0,1)$ but immediately shifted down by $-4$, in other words $s_1, s_2 ~ N(-4, 1)$. If this is not done, the Gaussians will overlap too much and fight against each other, resulting in streaks. This can be seen in @initialization.
 
 #subpar.grid(
   columns: (1fr, 1fr, 1fr),
@@ -719,11 +759,12 @@ For the initialization, we use a hyperparameter for the number of Gaussians that
  Representation with unscaled initialization
     ],
   ),
+  label: <initialization>
 )
 
-== Gradient descent
+== Loss
 As mentioned earlier we use gradient descent. For this we need a loss function. This loss functions consists of a few different components. Most importantly, the $L_1$ loss, formally defined as $||f-hat(f)||$. Besides this, we will also use the structural similarity index measure (SSIM). These will be weighed with $lambda$. The total loss for how well the image looks will be
-$L_"image" = lambda||f - hat(f)|| + (1 - lambda) * (1 - text("SSIM")(f, hat(f))) $. The $L_1$ loss has a big focus on individual pixel differences, while this is useful, this might overfit on certain pixel. SSIM on the otherhand focus on differences on a structural level, looking more at luminance and constrast. Combining these two has been done in similiar image representation projects, and work here again. 
+$L_"image" = lambda||f - hat(f)|| + (1 - lambda) * (1 - text("SSIM")(f, hat(f))) $. The $L_1$ loss has a big focus on individual pixel differences. While this is useful, this might overfit on certain pixel. SSIM on the other hand focus on differences on a structural level, looking more at luminance and constrast. Combining these two has been done before in similar image representation projects, and work here again. 
 
 #todo-box[
   Possible: add some images to back this up. Perhaps also that the loss is more "convex" (i.e. doesnt go up, which was the case when only using L1 loss). Although I have no good reasoning for why this happens. 
@@ -732,7 +773,7 @@ $L_"image" = lambda||f - hat(f)|| + (1 - lambda) * (1 - text("SSIM")(f, hat(f)))
 == Artifacts<artifacts>
 Besides the actual representation, we have two other things that we want to discourage to prevent the generation of invisible or unwanted artifacts. As gradient descent tries to find the minimum of the loss, we can put things in the loss to discourage certain behavior. First of all, we want to limit the anisotropy, to make sure Gaussians do not become stretched out, but stay fairly round. Furthermore, we also do not want Gaussians to become too small; to be exact, they must not be smaller than a pixel, as this will make them hidden while rendering, but they still contain information in the final embedding. Both of these are already being prevented in @culling, culling, but to push Gaussians in the right direction before fully being removed, we also want to put this in the loss.
 
-The effects of small gaussians is not directly apparent, seemingly the performance is roughly similiar.
+The effects of small Gaussians is not directly apparent, seemingly the performance is roughly similiar.
 
 #subpar.grid(
   columns: (1fr, 1fr, 1fr),
@@ -811,7 +852,7 @@ You will see the artifacts in the right image. These are not visible in the 100x
 
 The problem with these subpixel Gaussians is that they will still contain information in the tokens, to keep these tokens pure and as close to the original image as possible, we want to remove this. 
 
-To already penalize this in the trainig process, we will add the following loss function $L_"sizing" = overline(exp( -(s_1 + s_2) -8)) * lambda_"sizing"$ to the loss. Where $lambda_"sizing"$ determines how much influence this loss functions has. 
+To already penalize this in the training process, we will add the following loss function $L_"sizing" = overline(exp( -(s_1 + s_2) -8)) * lambda_"sizing"$ to the loss. Where $lambda_"sizing"$ determines how much influence this loss functions has. 
 
 The effect of anisotropic Gaussians is fairly similiar, as can be seen below.
 
@@ -838,7 +879,7 @@ The effect of anisotropic Gaussians is fairly similiar, as can be seen below.
     caption: [
  Representation without shearing loss, and no culling, upscaled to 150x150.
     ],
-  ),
+  )
 )
 
 Here we define the anisotropy as 
@@ -846,27 +887,25 @@ $L_"anisotropy" = overline(|s_1 + s_2|) * lambda_"anisotropy"$. Because shear is
 
 The final loss is then defined as $L = L_"image" + L_"anisotropy" + L_"sizing"$, $lambda_"anisotropy"$ and $lambda_"sizing"$ are both set to 0.1.
 
-As $RR^2 times RR times RR^3$ are all vector spaces, and the loss function is continuous, we can use gradient descent to optimize this. We will use AdamW and a scheduler to further optimize the training process.
+As $RR^2 times RR times RR^3$ are all vector spaces, and the loss function is continuous and differentiable, we can use gradient descent to optimize this. We will use AdamW and a scheduler to further optimize the training process.
 
 == Amount of Gaussians<amount-of-gaussians>
-The amount of Gaussians have a significant impact on both the quality of the image and the amount of tokens, but they are inversely related. Finding an optimal is therefore essential, as too much tokens will slow down the training of the model, but quality is needed to train effeciently. This amount is also highly dependent on the resolution of the original image, and nature of the image. Images which a lot of contrast and high frequency data, such as text in an image, require more Gaussians.
+The amount of Gaussians have a significant impact on both the quality of the image and the amount of tokens, but we want to have the best quality while having the least amount of tokens. Finding an optimal is therefore essential, as too much tokens will slow down the training of the model, but quality might be needed to train the transformer efficiently. This amount is also highly dependent on the resolution of the original image, and nature of the image. Images which a lot of contrast and high frequency data, such as text in an image, require more Gaussians.
 
 The base image we have been using uses 1500 Gaussians for 100x100, below are the effects doubling and halving that
 
 #subpar.grid(
-  columns: (1fr, 1fr, 1fr),
+  columns: (1fr, 1fr, 1fr, 1fr),
   rows: (auto),
   gutter: 10pt,
   align: top,
   caption: [Comparing different starting amount of Gaussians.],
-  figure(""),
   figure(
     image("./images/castle_original.png", width: 100%),
     caption: [
  Original castle image
     ],
   ),
-  figure(""),
   figure(
     image("./images/castle_low_amount.png", width: 100%),
     caption: [
@@ -974,19 +1013,18 @@ While the performance is better in terms of the SSIM, however we see the same is
 == Higher order Gaussians
 To see the performance and the influence of the higher order Gaussians, we remove the $phi_0$ and only render $phi_{1,2}$. Looking at the previous comparison we can clearly see the lines and edges in the image.
 
-#grid(
-  columns: (1fr, 1fr, 1fr),
+#subpar.grid(
+  columns: (1fr, 1fr, 1fr, 1fr),
   rows: (auto),
   gutter: 10pt,
   align: bottom,
-  "",
+  caption: [Comparing the accents of different amount of Gaussians. The lines and edges of the castle are more visible with more Gaussians.],
   figure(
     image("./images/castle_original.png", width: 100%),
     caption: [
  Original castle image
     ],
   ),
-  "",
   figure(
     image("./images/castle_accent_low_amount.png", width: 100%),
     caption: [
@@ -1009,11 +1047,12 @@ To see the performance and the influence of the higher order Gaussians, we remov
 
 You can clearly see where the image has more fidelity, and see the outlines of the castle. This effect is a lot stronger with more Gaussians. 
 
-#grid(
+#subpar.grid(
   columns: (1fr, 1fr, 1fr),
   rows: (auto),
   gutter: 10pt,
-  align: bottom,
+  align: top,
+  caption: [Comparing the accents of different amount of Gaussians. The lines and edges of the cars and the curb are more visible with more Gaussians.],
   figure(
     image("./images/cars_original.png", width: 100%),
     caption: [
