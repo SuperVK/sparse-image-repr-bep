@@ -43,9 +43,9 @@
 #show: template.with(
   title: text(font: "Cantarell", weight: "bold")[Sparse geometric representation of images \ using Gaussian splatting] + text(14pt, black)[\ (Bachelor thesis)],
   authors: (
-    (name: "Victor Klomp (Author)"),
-    (name: "Bart M.N. Smets (Supervisor)"),
-    (name: "Finn M. Sherry (Supervisor)")
+    (name: "Victor Klomp"),
+    // (name: "Bart M.N. Smets (Supervisor)"),
+    // (name: "Finn M. Sherry (Supervisor)")
   ),
   lines: false,
   // affiliations: (
@@ -58,7 +58,7 @@
   link-color: rgb("#185693"),
   // Insert your abstract after the colon, wrapped in brackets.
   // Example: `abstract: [This is my abstract...]`
-  abstract: lorem(100),
+  // abstract: lorem(100),
   // keywords: ("First keyword", "Second keyword", "etc."),
   // AMS: ("65M70", "65M12"),
   // Pass page-args to change page settings
@@ -87,10 +87,18 @@
   title: "Todo",
   icon-name: "gear",
 )
-
-\ \ \
+\ \ 
 #align(center)[
-  #image("images/frontpage.png", width: 100pt)
+  #grid(
+    columns: (1fr, 1fr),
+    [#text(weight: "bold")[Bart M.N. Smets] \ (Supervisor)],
+    [#text(weight: "bold")[Finn M. Sherry] \ (Supervisor)]
+  )
+]
+
+\ \
+#align(center)[
+  #image("images/frontpage.png", width: 150pt)
 ]
 
 #colbreak()
@@ -1037,14 +1045,14 @@ We have also analyzed the effect of shearing on the Gaussians to be able to bett
 
 Furthermore, more complex wavelets can be used to encode more complex features in images. Specifically, we can use first and second order derivatives of Gaussians to encode edges and lines in an image. In theory this should be able to reduce the amount of Gaussians used in the representation, although this outside of the scope of this thesis.
 
-Finally, we can use metrics of Gaussians to futher generate tokens that provide useful result. Specifically we can make sure that the training process does not abuse the implementation details of the rendering function, such as Gaussians that are subpixel. Furthermore, we can also remove any Gaussians that are not relevant to the final representation, reducing the amount of final Gaussians that are used as tokens.
+Finally, we can use metrics of Gaussians to ensure the generated tokens actually provide useful result. Specifically we can make sure that the training process does not abuse the implementation details of the rendering function, such as Gaussians that are subpixel. Furthermore, we can also remove any Gaussians that are not relevant to the final representation, reducing the amount of final Gaussians that are used as tokens.
 
 = Future work
 This thesis has mostly been exploratory on various techniques and topics, ideally, we could better compare actual impact on a large dataset of images. For this, more computing power is needed. This would also allow us to compare image and performance at a higher resolution.
 
-Furthermore, the wavelets have been chosen somewhate arbitrary, perhaps there are other configurations of wavelets that can do better representation. This will probably depend heavily on the type of application. Where specific wavelets might be better suited for specific types of images. 
+Furthermore, the wavelets have been chosen somewhate arbitrary, perhaps there are other definition of wavelets that can do better representation. This will probably depend heavily on the type of application. Where specific wavelets might be better suited for specific types of images. 
 
-Finally, the representation is ideally tested on an actual transformer to see if the transformer can properly work with our representation. Ideally this is compared against a representation that does not include first and second order derivatives. We suspect that the transformer is able to extract extra information from the higher orders. 
+Finally, the representation is ideally tested as tokens in a transformer to see if the transformer can properly work with our representation. Ideally this is compared against a representation that does not include first and second order derivatives. We suspect that the transformer is able to extract extra information from the higher orders. 
 
 
 #colbreak()
