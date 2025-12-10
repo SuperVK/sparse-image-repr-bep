@@ -196,7 +196,7 @@ Each of these Gaussians has an independent set of color values. $c^(i,j) in RR$,
 
 Finally, the function in @eq:gaussian-lie-splatting will then be approximated by 
 $
- f approx sum c^i_0 (g_i act phi_0) + c^i_1 (g_i act phi_1) + c^i_2 (g_i act phi_2).
+ f approx sum 0.5 + c^i_0 (g_i act phi_0) + c^i_1 (g_i act phi_1) + c^i_2 (g_i act phi_2).
 $
 
 == Lie groups
@@ -740,6 +740,10 @@ To find the optimal parameters $c$ and $v$, we will use gradient descent as expl
 // $exp(X) = mat(cos(b), sin(b);
 // - sin(b), cos(b))$
 
+== Loss
+The loss function consists of a few different components. Most importantly, the $L_1$ loss, formally defined as $||f-hat(f)||$. Besides this, we will also use the structural similarity index measure (SSIM) @SSIM. These will be weighed with $lambda$. The total loss for how well the image looks will be
+$L_"image" = lambda||f - hat(f)|| + (1 - lambda) * (1 - text("SSIM")(f, hat(f))) $. The $L_1$ loss has a big focus on individual pixel differences. While this is useful, it might overfit on certain pixels. SSIM, on the other hand, focuses on differences on a structural level, looking more at luminance and contrast. Combining these two has been done before in similar image representation projects, and work here again @kerbl20233d. Later in @artifacts, this loss will expanded upon to create a final loss.
+
 == Culling<culling>
 As we want to decrease the number of Gaussians that we save, we will remove the Gaussians based on their parameters. This process is called culling @kerbl20233d. The most obvious is that we would like to remove Gaussians where the color values are negligibly small for all Gaussian layers. Formalized by 
 $
@@ -758,7 +762,7 @@ The problem is that these Gaussians are still visible, so doing this culling aft
 
 The hardware used is an `Intel(R) Core(TM) i7-10750H (12) @ z` and `NVIDIA Quadro T1000 Mobile`; on this hardware, training took between 1 minute and 5 minutes. However, minimising the training time is not a goal of the project.
 
-In this section, we will discuss the results and adaptations we have made based on the findings. We will first present the final product, which includes all the adaptations, which we will use as our base performance to compare against. 
+In this section, we will discuss the results and adaptations we have made based on the findings. We will first present the final product as seen in @final-performance, which includes all the adaptations, which we will use as our base performance to compare against. 
 
 
 #figure(
@@ -784,7 +788,7 @@ In this section, we will discuss the results and adaptations we have made based 
       ],
     ),
   )
-)
+)<final-performance>
 
 
 == Initialization
@@ -826,11 +830,6 @@ For the initialization, we use a hyperparameter for the number of Gaussians that
     )
   )
 )<initialization>
-
-== Loss
-As mentioned earlier, we use gradient descent. For this, we need a loss function. This loss function consists of a few different components. Most importantly, the $L_1$ loss, formally defined as $||f-hat(f)||$. Besides this, we will also use the structural similarity index measure (SSIM). These will be weighed with $lambda$. The total loss for how well the image looks will be
-$L_"image" = lambda||f - hat(f)|| + (1 - lambda) * (1 - text("SSIM")(f, hat(f))) $. The $L_1$ loss has a big focus on individual pixel differences. While this is useful, it might overfit on certain pixels. SSIM, on the other hand, focuses on differences on a structural level, looking more at luminance and contrast. Combining these two has been done before in similar image representation projects, and work here again @kerbl20233d. 
-
 
 
 // #todo-box[
