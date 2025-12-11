@@ -1,4 +1,5 @@
 #import "template.typ": *
+// #import "@preview/clean-math-paper:0.2.5"
 #import "@preview/theorion:0.3.3": *
 #import "@preview/cetz:0.4.2"
 // #import cosmos.fancy: *
