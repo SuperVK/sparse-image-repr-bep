@@ -131,9 +131,9 @@
 In the last few years, AI and machine learning have become increasingly important. We have seen ML applied across several domains, mainly text, image, video, and audio. For image recognition, convolutional neural networks (CNN) have been quite successful. CNNs use convolutional kernels to group pixels together, such that for a 100x100 pixel image, we do not need 10,000 weights to connect each pixel. These networks are designed to extract information from images, such as classification. This has become the de facto standard for image recognition in the past 10 years @Zhao2024 @NIPS2012_c399862d
 
 Recently, another model has become prevalent: the transformer @vaswani2023attentionneed.
-A transformer takes tokens as inputs; in most cases, these tokens are words. The transformer can predict new tokens, leading to generative models. It was discovered that you can serialize an image into patches of 16x16 pixels and use those as tokens to train transformers successfully @dosovitskiy_image_2021. Initially outperforming "classical" CNNs, later the optimizations in the transformers have been backported to CNN @liu2022convnet2020s. In this thesis, however, we will focus on transformers instead of CNNs, specifically the generation of tokens for transformers.
+A transformer takes tokens as inputs; in most cases, these tokens represent words. The transformer can predict new tokens, leading to generative models such as ChatGPT. It was discovered that you can serialize an image into patches of 16x16 pixels and use those as tokens to train transformers successfully as an alternative to CNNs @dosovitskiy_image_2021. Initially outperforming "classical" CNNs, later the optimizations in the transformers have been backported to CNN @liu2022convnet2020s. In this thesis, however, we will focus on transformers instead of CNNs, specifically the generation of tokens for transformers.
 
-Ideally, we can find a set of tokens that describes an image, similar to how a set of words describes a sentence or text. While text tokens can encode grammatical or contextual information, image tokens should capture geometric information. Currently, the 16x16 patches do not contain any geometrical information. This is reintroduced in the embedding, but the way this is done is unstable and unpredictable for any transformation done on the tokens by the transformer. It also does not match the Euclidean geometry that we expect from images. This is also described in @dosovitskiy_image_2021, where we can see that the attention of a token is mostly on tokens that are on the same row/column axis. This is more likely because of the embedding, instead of the actual relevance of those tokens.
+Ideally, we can find a set of tokens that describes an image, similar to how a set of words describes a sentence or text. While text tokens can encode grammatical or contextual information, image tokens should capture geometric information. Currently, the 16x16 patches do not contain any geometrical information. This is reintroduced in the position embedding, but the way this is done is unstable and unpredictable for any transformation done on the tokens by the transformer. It also does not match the Euclidean geometry that we expect from images. This is also described in @dosovitskiy_image_2021, where we can see that the attention of a token is mostly on tokens that are on the same row/column axis. This is more likely because of the embedding, instead of the actual relevance of those tokens.
 
 One way to generate such tokens is Gaussian splatting. This has been popularized in 2023 and is being used for 3D scene reconstruction @kerbl20233d. By taking multiple pictures and spawning Gaussian blobs in 3D to match each view, it results in a 3D scene represented by Gaussians. This is done using gradient descent to train the scenes to iteratively better match each image, using L1 and SSIM loss. Recently, Gaussian splatting has also been used in 2D for image representation @zhang_gaussianimage_2025. This works essentially by taking only one image and training for that single image. This process works a lot simpler, as quite a few complications for 3D do not have to be made anymore. Besides encoding tokens for transformers, 2D Gaussian splatting can also be used in scenarios where compression is done once and decompression is done multiple times, such as textures for video games. Finally, 2D Gaussian splatting also has applications in super-resolution, i.e., upscaling images @peng_pixel_2025 @zhang2025image @zhang_gaussianimage_2025
 
@@ -143,18 +143,18 @@ Tokenization of Gaussian parameters has already been studied @dong_gaussiantoken
 
 We are expanding the Gaussian splatting method with an explicit geometric description in terms of a Lie group, as well as using higher order derivatives to more efficiently encode edges and lines.
 
-Concretely, we have some image $f : RR^2 mapsto RR^3$ (or more precisely $f : [0, H] times [0, W] mapsto [0,1]^3$) which we want to approximate with Gaussian functions. This representation will look like
+Concretely, we have some image $f : RR^2 -> RR^3$ (or more precisely $f : [0, H] times [0, W] -> [0,1]^3$) which we want to approximate with Gaussian functions. This representation will look like
 $
- f approx sum c_i e^(-||x-y_i||^2_A).
-$<gaussian-splatting>
+ f(x) approx sum c_i e^(-||x-y_i||^2_A).
+$<eq:gaussian-splatting>
 
-This representation is already used for various applications such as superresolution, high-fps rendering, and data compression @zhang2025image @zhang_gaussianimage_2025 @peng_pixel_2025. Our goal however, is to create a sparse representation that holds geometric information, such that we can use it as image tokenization for transformer models.
+This representation is already used for various applications such as superresolution, high-fps rendering, and data compression @zhang2025image @zhang_gaussianimage_2025 @peng_pixel_2025. Our goal, however, is to create a sparse representation that holds geometric information, such that we can use it as image tokenization for transformer models.
 
 To retain geometric information as well as possible, we will use Lie groups to position the Gaussians. The representation will then look similar to 
 $
- f approx sum c_i (g_i act e^(-||x||^2)).
-$<gaussian-lie-splatting>
-We can see that @eq:gaussian-lie-splatting is equivalent to @eq:gaussian-splatting in terms of the goal it achieves, as we will see in @lie-groups. However, this way we represent the parameters is key to retaining geometric information in the transformer. 
+ f(x) approx sum c_i (g_i act e^(-||x||^2)).
+$<eq:gaussian-lie-splatting>
+We can see that @eq:gaussian-lie-splatting is equivalent to @eq:gaussian-splatting in terms of the goal it achieves, as we will see in @lie-groups. However, this way of representing the parameters is key to retaining geometric information in the transformer. 
 
 
 // We will spawn $n$ initial Gaussians, each of which will represent one token, and each token will have $p$ (tbd) parameters that describe the color values of the Gaussian layers and the geometric properties such as location, rotation, and scale. 
@@ -166,7 +166,7 @@ $
  phi_0(x) := e^(-||x||^2) \
  hat(phi)_1 = (dif) / (dif x_2) phi_0 \
  hat(phi)_2 = (dif) / (dif x_2) phi_1 
-$<unscaled-gaussians>
+$<eq:unscaled-gaussians>
 
 Please note that the choice of variable ($x_1$ or $x_2$) for the derivative does not matter, as the axes are orthogonal, $phi_0$ is rotationally symmetric, thus the derivative can be rotated by $90 deg$ to get the other derivative.
 
@@ -193,9 +193,9 @@ Layering these as is will not result in a good overlap, however, because the "su
 The function in @eq:gaussian-lie-splatting will then be approximated by 
 $
  f approx 0.5 + sum_(i=1)^N sum_k^3 c^k_i (g_i act phi_k).
-$<theorical-rendering-function>
+$<eq:theorical-rendering-function>
 
-Each of these Gaussians has an independent set of color values. $c^(i,j) in RR$, $i in {0,1,2}$ for each the Gaussian layers, and $j in {1, 2, 3}$ for the color channels, totalling 9 values. Each color value is not directly the color that the Gaussian attains, but rather an addition or subtraction in a certain direction for the final color. For each pixel color $p c in [0,1]^3$, we start with a default of $0.5$. This has the advantage that the image is color invertible by multiplying all the color values by $-1$, but also does not introduce an implicit bias to the color black, as opposed to white (or vice versa). Therefore, the color values of the Gaussians can attain any value in $RR$, however, most likely they will be pushed between $[-0.5, 0.5]^3$ as the input image contains only values between $[0, 1]^3$, and any overflow will be automatically clipped. Another way this can be done is by putting the final color value into a sigmoid function, both have similar performance.
+Each of these Gaussians has an independent set of color values. $c^(i,j) in RR$, $i in {0,1,2}$ for each the Gaussian layers, and $j in {1, 2, 3}$ for the color channels, totalling 9 values. Each color value is not directly the color that the Gaussian attains, but rather an addition or subtraction in a certain direction for the final color. For each pixel color $p c in [0,1]^3$, we start with a default of $0.5$. This has the advantage that the image is color invertible by multiplying all the color values by $-1$, but also does not introduce an implicit bias to the color black, as opposed to white (or vice versa). Therefore, the color values of the Gaussians can attain any value in $RR$, however, most likely they will be pushed between $[-0.5, 0.5]^3$ as the input image contains only values between $[0, 1]^3$, and any overflow will be automatically clipped. Another way this can be done is by putting the final color value into a sigmoid function; both have similar performance.
 //This will be elaborated on later. 
 
 // #todo-box[hier even naar kijken, in principe hebben we het later niet meer over kleuren, maar het zou wel net zijn om dat in de resultaat wel te doen]
@@ -219,7 +219,7 @@ $
 $
 for all $(x_1,A_1), (x_2, A_2) in Aff^+(RR^2)$.
 ]
-Where $GL^+(RR^2)$ is the group of 2-dimensional real linear transformations with positive determinants, i.e. $2 times 2$ matrices with positive determinant. This positive determinant ensures that the transformation does not flip the image, as the Gaussians and their derivatives are symmetric, which is redundant. Furthermore, this ensures the group consists of only one component, through which we can move in a continuous fashion. Intuitively, you can rotate continuously, but you cannot flip an image continuously. Later, this will also make mathematical sense when we decompose elements of $GL^+(RR^2)$ into a rotational matrix and a positive definite symmetric matrix, which is only possible with a positive determinant.
+Where $GL^+(RR^2)$ is the group of 2-dimensional real linear transformations with positive determinants, i.e., $2 times 2$ matrices with positive determinant. This positive determinant ensures that the transformation does not flip the image, as the Gaussians and their derivatives are symmetric, which is redundant. Furthermore, this ensures the group consists of only one component, through which we can move in a continuous fashion. Intuitively, you can rotate continuously, but you cannot flip an image continuously. Later, this will also make mathematical sense when we decompose elements of $GL^+(RR^2)$ into a rotational matrix and a positive definite symmetric matrix, which is only possible with a positive determinant.
 
 #lemma[
 The unit element of $Aff^+(RR^2)$ is $(0, I)$, the inverse of any $(x, A) in Aff^+(RR^2)$ is $(-A^(-1)x, A^(-1))$ and the $Aff^+(RR^2)$ has a dimension of 6.
@@ -298,7 +298,7 @@ $
 
 
 === Lie groups & parameter space
-This works quite well for positioning the Gaussians with some particular translation, scaling, and rotation. However, to find the set of group elements such that this matches our target image, such as in @eq:theorical-rendering-function, we will use gradient descent, as will be explained in @method. This requires the parameters to lie in a vector space. This is not the case by default for the Lie group. This means that when naively applying gradient descent on $Aff^+(RR^2)$ as a subset of $RR^6$, the parameters could no longer be in the Lie group after gradient descent steps. For example, the determinant could turn negative, leaving the group. This means that this parameter has no longer any useful meaning, and cannot be used to position the Gaussian. 
+This works quite well for positioning the Gaussians with some particular translation, scaling, and rotation. However, to find the set of group elements such that this matches our target image, such as in @eq:theorical-rendering-function, we will use gradient descent, as will be explained in @method. This requires the parameters to lie in a vector space. This is not the case by default for the Lie group. This means that when naively applying gradient descent on $Aff^+(RR^2)$ as a subset of $RR^6$, the parameters could no longer be in the Lie group after gradient descent steps. For example, the determinant could turn negative, leaving the group. This means that this parameter has no longer any useful meaning, and positioning the Gaussians could fall outside of our constraints, such as reflections or infinitely thin Gaussians. 
 
 For this reason, we will search for a parameter space, $V$, such that $V$ is a vector space, and there exists a surjective function $psi : V -> G$. As $V$ is a vector space, we can apply gradient descent on $V$, use $psi$ to map $V$ to $G$, and render the image using $G$. 
 
@@ -306,7 +306,7 @@ For this reason, we will search for a parameter space, $V$, such that $V$ is a v
 === The Lie algebra $aff(RR^2)$
 To solve this issue, we would like to make use of the Lie algebra. This is the tangent space at the identity of the Lie group. The Lie algebra can be mapped into the Lie group (and vice versa), but is also a vector space.
 
-The Lie algebra of $Aff^+(RR^2)$ is $aff(RR^2) := RR^2 times.r gl(RR^2) equiv RR^2 times.r RR^(2 times 2)$.
+The Lie algebra of $Aff^+(RR^2)$ is $aff(RR^2) := RR^2 times.r gl(RR^2) equiv RR^2 times RR^(2 times 2)$.
 Note that we say $aff$ and not $aff^+$; this is because $aff$ is the Lie algebra of both the $Aff^+$ and $Aff$ Lie groups, illustrating that there is not a one-to-one relationship between Lie groups and Lie algebras.
 
 #lemma[
@@ -340,6 +340,17 @@ $(x_1, A_1) (x_2, A_2)$ in matrix form is
 $mat(A_1, x_1; 0, 1)mat(A_2, x_2; 0, 1) = mat(A_1 A_2, A_1 x_2 + x_1; 0, 1).$
 
 Converting this back is $(A_1 x_2 + x_1, A_1 A_2)$, which proves the matrix multiplication is equivalent to the group operation.
+
+Furthermore, we will show that the matrix representation of the Lie algebra respects the Lie bracket.
+
+Take $(v, V), (w, W) in aff(RR^2) equiv RR^2 times RR^(2 times 2)$.
+
+We know that $[(v, V), (w, W)] = (V w - W v, [V, W])$.
+
+In their matrix representation, this works out to
+$
+mat(V, v; 0, 0)mat(W, w; 0, 0) - mat(W, w; 0, 0)mat(V, v; 0, 0) = mat(V W - W V, V v - W v; 0, 0) = mat([V, W], V w - W v; 0, 0).
+$ We can see that this is equivalent to the earlier result.
 
 $qed$
 
@@ -518,17 +529,17 @@ $
 // ]
 
 
-== A note on shearing
+== A note on shearing <a-note-on-shearing>
 Shearing is the changing of the angle of the orthogonal base vectors of the space. No shearing with respect to ${e_1, e_2}$ implies that $(A e_1)^T A e_2 = 0$. In our case $e_1 := (1, 0)^T$ and $e_2 := (0, 1)^T$. This shearing can have some interesting properties, so we will take a closer look to see if we want this or if we want to exclude this from the Gaussian transformations.
 
 
-Dissecting the polar decomposition from earlier we can retrieve some useful conclusions.
+Dissecting the polar decomposition from earlier, we can retrieve some useful conclusions.
 
 // We can see that $R in O(2)$, and $S in SPD(2)$ does scaling and this shearing. In fact we know that $R in SO(2)$ and does the rotation.
 
 #proposition[
-  Given $A in GL^+(2)$, there is an unique decomposition $A = R S$, such that $R in SO(2)$ and $S in SPD(2)$. 
-]
+ Given $A in GL^+(2)$, there is an unique decomposition $A = R S$, such that $R in SO(2)$ and $S in SPD(2)$. 
+] <prop:rs-decomp>
 
 _Proof:_
 
@@ -613,7 +624,7 @@ _Proof:_
 
 // First, we know that any $S in SPD(2)$ can be generated by $R in SO(2)$ and $hat(S) in D$ where $D$ is all diagonal matrices. This is an eigendecomposition, defined as the following $S = R^T hat(S) R$.
 
-We know that $A = R S$, then we can do an eigendecomposition and decompose $S$ as
+We know that $A = R S$ as per @prop:rs-decomp, then we can do an eigendecomposition and decompose $S$ as
 
 $
  S = Q Lambda Q^T.
@@ -630,7 +641,10 @@ $
 Now we can define $overline(R) := R Q in SO(2)$ and $D := Lambda$.
 
 Thus $A act phi_0 = overline(R) D act phi_0$.
+
 $qed$
+
+From this also follows that the order must be important.
 
 #proposition(title: "Polar decomposition ordering")[
 
@@ -639,7 +653,7 @@ $qed$
  $
  A(r, s_1, s_2, 0) = exp mat(0, -r; r, 0) exp mat(s_1, 0; 0, s_2)
  $
- never contains no shearing in ${e_1, e_2}$.
+ never contains shearing in ${e_1, e_2}$.
  
  While
  $
@@ -661,7 +675,7 @@ and
 $
  S = mat(exp(s_1), 0; 0, exp(s_2))
 $
-applied as $R S$ results in $e_1 e_2^T = 0$.
+applied as $R S$ results in no shearing in ${e_1, e_2}$
 
 We can see this by
 $
@@ -674,7 +688,7 @@ $
   
 $
 
-It is also true that for $B = S R$, applying $S R$ in the other order can result in shearing; we will show this with an example.
+This is not true for $B = S R$, applying $S R$ in the other order can result in shearing. We will show this with an example.
 
 Define 
 $
@@ -690,7 +704,7 @@ $(S R e_1)^T (S R e_2) = - 3/2 != 0$
 
 $qed$
 
-And thus we can see that the parametrization is still surjective with $s_3 = 0$ for 0-th order Gaussians and other radially symmetric wavelets. We can therefore remove this in the parameter space $V equiv RR^5$. We can still map this using $psi$, however, this will no longer map to $Aff^+$, but a subset of that where there exists no shearing. This subset is not a group.
+And thus we can see that the parametrization is still surjective with $s_3 = 0$ for 0-th order Gaussians and other radially symmetric wavelets. We can therefore remove this in the parameter space $V equiv RR^5$ if we only use the 0-th order Gaussian or other radially symmetric wavelets. We can still map this using $psi$, however, this will no longer map to $Aff^+$, but a subset of that where there exists no shearing. This subset is not a group.
 
 #corollary[
 
@@ -730,8 +744,10 @@ The target image we want to approximate is defined as $f : RR^2 -> RR^3$.
 The final image that is generated from the parameters is defined by
 
 $
-hat(f) = 0.5 + sum_(i=1)^N sum_k^3 c^k_i (g_i act phi_k) = 0.5 + sum_(i = 0)^n sum_(k)^3 c_i^(k) (psi(v_i) act phi_k).
+hat(f) = 0.5 + sum_(i=1)^N sum_k^3 c^k_i (g_i act phi_k) = 0.5 + sum_(i = 0)^n sum_(k)^3 c_i^(k) (psi(v_i) act phi_k)
 $
+
+adapted from @eq:theorical-rendering-function.
 
 // Where $c equiv RR^9$ and $v equiv RR^5$ or $v equiv RR^6$ depending on the inclusion of the shearing parameter 
 
@@ -757,7 +773,7 @@ To find the optimal parameters $c$ and $v$, we will use gradient descent as expl
 == Loss
 The loss function consists of a few different components. Most importantly, the $L_1$ loss, defined as 
 $
-||f-hat(f)||_1 = sum_(i=1)^3 sum_(x in RR^2) |f(x) - hat(f)(x)|_i.
+||f-hat(f)||_1 = sum_(i=1)^3 integral_(x in RR^2) |f(x) - hat(f)(x)|_i.
 $
 
 Besides this, we will also use the structural similarity index measure (SSIM) @SSIM. These will be weighed with $lambda$. The total loss for how well the image looks will be
@@ -771,10 +787,10 @@ $
 
 The other criterion is the size of the Gaussian. Formally, we do this by removing all Gaussians where
 $
- s 1 + s 2 <= -7.5.
+ s_1 + s_2 <= delta.
 $
 
-The problem is that these Gaussians are still visible, so doing this culling after all training is done could leave some gaps in the image. Therefore, we do this on 80% of the training, thus giving the gradient descent still some iterations to recover and fill the gaps.
+In our case, $delta = -7.5$, which removes most Gaussians that are around the size of a pixel. The problem is that these Gaussians are still visible by a little bit, so doing this culling after all training is done could leave some gaps in the image. Therefore, we do this on 80% of the training, thus giving the gradient descent still some iterations to recover and fill the gaps.
 
 = Results
  To put this into practice, we use pytorch to make use of CUDA kernels and speed up the rendering. The source code is available on GitHub#footnote[https://github.com/SuperVK/sparse-image-repr-bep]. The images are constrained to 1:1 to ease the implementation; the theory can be easily scaled to any ratio. The resolution can differ, depending on the input. For the experiments, mostly 100x100 resolutions are used, as this is a limitation of the physical hardware on which the tests were run. Higher resolution images would use more VRAM. 
@@ -785,7 +801,7 @@ In this section, we will discuss the results and adaptations we have made based 
 
 
 #figure(
-  caption: [Comparing the original image against the final representation. The final representation uses 1500 Gaussians. ],
+  caption: [Comparing the original image against the final representation. The final representation uses $~$1500 Gaussians. ],
   grid(
     columns: (1fr, 1fr),
     figure(
@@ -1003,7 +1019,7 @@ The effect of anisotropic Gaussians is fairly similar, as can be seen below.
 )
 
 Here we define the anisotropy as 
-$L_"anisotropy" = |s_1 - s_2| * lambda_"anisotropy"$ averaged over all Gaussians. Because shear is exclusively generated by the size, this is an easy way to penalize for this.
+$L_"anisotropy" = |s_1 - s_2| dot lambda_"anisotropy"$ averaged over all Gaussians. Because shear is exclusively generated by $s_1$ and $s_2$, instead of also $s_3$ as shown in @a-note-on-shearing, this is an easy way to penalize for this.
 
 The final loss is then defined as 
 $
@@ -1122,13 +1138,13 @@ Furthermore, going back to @amount-of-gaussians, we can compare the start and en
     "High amount: ", "3000", "2827",
 
   ),
-  caption: [Comparing the effects of culling on different number of Gaussians.]
+  caption: [Comparing the effects of culling on different numbers of Gaussians.]
 )
 
 About 5% of the Gaussians are being removed. Almost all of these Gaussians are being removed based on color, i.e., they provide little to nothing to the color values.
 
 #figure(
-  caption: [The representation when not doing any culling, the differences are noticable in the bushes and in the dormer.],
+  caption: [The representation when not doing any culling, the differences are noticeable in the bushes and in the dormer.],
   grid(
     columns: (1fr, 1fr, 1fr),
     rows: (auto),
@@ -1232,7 +1248,7 @@ You can clearly see where the image has more fidelity, and see the outlines of t
       supplement: "",
       image("./images/cars_original.png", width: 100%),
       caption: [
- Original castle image
+ Original car image
       ],
     ),
     figure(
@@ -1261,18 +1277,18 @@ In the car's image containing more edges, this effect is more clearly visible.
 = Conclusion
 In this thesis, we have looked at an alternative tokenization of images for transformer models using Lie theory and Gaussian splatting. We noticed that $Aff^+$ provides a good geometric representation of Gaussians. Unfortunately, the canonical vector space parameterization of Lie groups, Lie algebras, is not suitable. Therefore, we have derived an alternative parametrization that can be better used. 
 
-We have also analyzed the effect of shearing on the Gaussians to better analyze the training process. Noticing that the effect of shearing on Gaussians can also be generated by rotation and scaling. This leaves only two sizing parameters, which are geometrically easy to interpret, allowing us to penalize this metric. 
+We have also analyzed the effect of shearing on the Gaussians to better analyze the training process. Noticing that the effect of shearing on Gaussians can also be generated by rotation and scaling. This leaves only two sizing parameters, which are geometrically easy to interpret, allowing us to penalize this. 
 
-Furthermore, more complex wavelets can be used to encode more complex features in images. Specifically, we can use first and second-order derivatives of Gaussians to encode edges and lines in an image. In theory, this should be able to reduce the number of Gaussians used in the representation, although this is outside of the scope of this thesis.
+Furthermore, more complex wavelets can be used to encode more complex features in images. Specifically, we can use first and second-order derivatives of Gaussians to encode edges and lines in an image. In theory, this should be able to reduce the number of Gaussians used in the representation, although proper verification of this is outside of the scope of this thesis.
 
-Finally, we can use metrics of Gaussians to ensure the generated tokens actually provide useful results. Specifically, we can make sure that the training process does not abuse the implementation details of the rendering function, such as Gaussians that are subpixel in size. Furthermore, we can also remove any Gaussians that are not relevant to the final representation, reducing the number of final Gaussians that are used as tokens.
+Finally, we can inspect parameters of the Gaussians, such as scaling to influence the training process to actually provide useful results. Specifically, we can make sure that the training process does not abuse the implementation details of the rendering function, such as Gaussians that are subpixel in size. Furthermore, we can also remove any Gaussians that are not relevant to the final representation, reducing the number of final Gaussians that are used as tokens.
 
 = Future work
 This thesis has mostly been exploratory on various techniques and topics; ideally, we could better compare the actual impact on a large dataset of images. For this, more computing power is needed. This would also allow us to compare the image and performance at a higher resolution.
 
 Furthermore, the wavelets have been chosen somewhat arbitrarily; perhaps there are other definitions of wavelets that can do a better representation. This will probably depend heavily on the type of application. Where specific wavelets might be better suited for specific types of images. 
 
-Finally, the representation is ideally tested as tokens in a transformer to see if the transformer can properly work with our representation. Ideally, this is compared against a representation that does not include first and second order derivatives. We suspect that the transformer is able to extract extra information from the higher orders. 
+Finally, the representation is ideally tested as tokens in a transformer to see if the transformer can properly work with our representation. Ideally, this is compared against a classical ViT model @dosovitskiy_image_2021 that contains 16x16 patches, as well as other representations such GaussianToken @dong_gaussiantoken_2025. Hopefully, this representation performs just as well with fewer tokens.
 
 
 #colbreak()
