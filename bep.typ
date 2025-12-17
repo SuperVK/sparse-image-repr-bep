@@ -54,7 +54,7 @@
   //   (id: 2, name: "Affiliation 2, Address 2"),
   //   (id: "*", name: "Corresponding author")
   // ),
-  date: date + text(10pt, black)[\ Technical university of Eindhoven],
+  date: date + text(10pt, black)[\ Eindhoven University of Technology],
   heading-color: rgb("#c92127"),
   link-color: rgb("#185693"),
   // Insert your abstract after the colon, wrapped in brackets.
@@ -203,7 +203,7 @@ Each of these Gaussians has an independent set of color values. $c^(i,j) in RR$,
 
 
 == Lie groups<lie-groups>
-The component for position, rotation, and scale should ideally belong to a Lie group, as this means our representation can benefit from all the structure and tools that Lie groups provide. Specifically, we will look at Affine groups.
+The component for position, rotation, and scale should ideally belong to a Lie group, as this means our representation can benefit from all the structure and tools that Lie groups provide. Specifically, we will look at affine groups.
 
 === Affine group
 A group $G$ that covers all positions, rotations, and scaling is defined as follows. 
@@ -219,7 +219,7 @@ $
 $
 for all $(x_1,A_1), (x_2, A_2) in Aff^+(RR^2)$.
 ]
-Where $GL^+(RR^2)$ is the group of 2-dimensional real linear transformations with positive determinants, i.e., $2 times 2$ matrices with positive determinant. This positive determinant ensures that the transformation does not flip the image, as the Gaussians and their derivatives are symmetric, which is redundant. Furthermore, this ensures the group consists of only one component, through which we can move in a continuous fashion. Intuitively, you can rotate continuously, but you cannot flip an image continuously. Later, this will also make mathematical sense when we decompose elements of $GL^+(RR^2)$ into a rotational matrix and a positive definite symmetric matrix, which is only possible with a positive determinant.
+Where $GL^+(RR^2)$ is the group of 2-dimensional real linear transformations with positive determinants, i.e., $2 times 2$ matrices with positive determinant. This positive determinant ensures that the transformation does not flip the image, as the Gaussians and their derivatives are symmetric, which is redundant. Furthermore, this ensures the group consists of only one component, through which we can move in a continuous fashion. Intuitively, you can rotate continuously, but you cannot flip an image continuously. Later, this will also make mathematical sense when we decompose elements of $GL^+(RR^2)$ into a rotation matrix and a positive definite symmetric matrix, which is only possible with a positive determinant.
 
 #lemma[
 The unit element of $Aff^+(RR^2)$ is $(0, I)$, the inverse of any $(x, A) in Aff^+(RR^2)$ is $(-A^(-1)x, A^(-1))$ and the $Aff^+(RR^2)$ has a dimension of 6.
@@ -337,7 +337,7 @@ Let $(x_1, A_1), (x_2, A_2) in Aff^+(RR^2)$.
 
 $(x_1, A_1) (x_2, A_2)$ in matrix form is 
 
-$mat(A_1, x_1; 0, 1)mat(A_2, x_2; 0, 1) = mat(A_1 A_2, A_1 x_2 + x_1; 0, 1).$
+$ mat(A_1, x_1; 0, 1)mat(A_2, x_2; 0, 1) = mat(A_1 A_2, A_1 x_2 + x_1; 0, 1). $
 
 Converting this back is $(A_1 x_2 + x_1, A_1 A_2)$, which proves the matrix multiplication is equivalent to the group operation.
 
@@ -449,7 +449,7 @@ $<eq:parametrization-map>
 
 The matrix exponentials in the parametrization map @eq:parametrization-map have the following closed formulae
 $
-  exp_symm (r) = 
+  exp_so (r) = 
   exp mat(0,-r; r,0)
  =
   mat(cos r, -sin r; sin r, cos r)
@@ -463,7 +463,7 @@ and
 
 // or including the shearing
 $
-  exp_so (s_1, s_2, s_3) = 
+  exp_symm (s_1, s_2, s_3) = 
   exp mat(s_1, s_3; s_3, s_2)
   &=
  e^((s_1+s_2)/2)
@@ -777,12 +777,12 @@ $
 $
 
 Besides this, we will also use the structural similarity index measure (SSIM) @SSIM. These will be weighed with $lambda$. The total loss for how well the image looks will be
-$L_"image" = lambda||f - hat(f)||_1 + (1 - lambda) * (1 - text("SSIM")(f, hat(f))) $. The $L_1$ loss has a big focus on individual pixel differences. While this is useful, it might overfit on certain pixels. SSIM, on the other hand, focuses on differences on a structural level, looking more at luminance and contrast. Combining these two has been done before in similar image representation projects, and work here again @kerbl20233d. Later in @artifacts, this loss will be expanded upon to create a final loss.
+$L_"image" = lambda||f - hat(f)||_1 + (1 - lambda) dot (1 - text("SSIM")(f, hat(f))) $. The $L_1$ loss has a big focus on individual pixel differences. While this is useful, it might overfit on certain pixels. SSIM, on the other hand, focuses on differences on a structural level, looking more at luminance and contrast. Combining these two has been done before in similar image representation projects, and work here again @kerbl20233d. Later in @artifacts, this loss will be expanded upon to create a final loss.
 
 == Culling<culling>
 As we want to decrease the number of Gaussians that we save, we will remove the Gaussians based on their parameters. This process is called culling @kerbl20233d. The most obvious is that we would like to remove Gaussians where the color values are negligibly small for all Gaussian layers. Formalized by 
 $
-sum_j^3 abs(c^(1,j)) <= 0.05 and sum_j^3 abs(c^(2,j)) <= 0.05 and sum_j^3 abs(c^(3,j)) <= 0.05.
+sum_j^3 abs(c^(0,j)) <= 0.05 and sum_j^3 abs(c^(1,j)) <= 0.05 and sum_j^3 abs(c^(1,j)) <= 0.05.
 $
 
 The other criterion is the size of the Gaussian. Formally, we do this by removing all Gaussians where
@@ -793,7 +793,7 @@ $
 In our case, $delta = -7.5$, which removes most Gaussians that are around the size of a pixel. The problem is that these Gaussians are still visible by a little bit, so doing this culling after all training is done could leave some gaps in the image. Therefore, we do this on 80% of the training, thus giving the gradient descent still some iterations to recover and fill the gaps.
 
 = Results
- To put this into practice, we use pytorch to make use of CUDA kernels and speed up the rendering. The source code is available on GitHub#footnote[https://github.com/SuperVK/sparse-image-repr-bep]. The images are constrained to 1:1 to ease the implementation; the theory can be easily scaled to any ratio. The resolution can differ, depending on the input. For the experiments, mostly 100x100 resolutions are used, as this is a limitation of the physical hardware on which the tests were run. Higher resolution images would use more VRAM. 
+ To put this into practice, we use PyTorch to make use of CUDA kernels and speed up the rendering. The source code is available on GitHub#footnote[https://github.com/SuperVK/sparse-image-repr-bep]. The images are constrained to 1:1 to ease the implementation; the theory can be easily scaled to any ratio. The resolution can differ, depending on the input. For the experiments, mostly 100x100 resolutions are used, as this is a limitation of the physical hardware on which the tests were run. Higher resolution images would use more VRAM. 
 
 The hardware used is an `Intel(R) Core(TM) i7-10750H (12) @ z` and `NVIDIA Quadro T1000 Mobile`; on this hardware, training took between 1 minute and 5 minutes. However, minimising the training time is not a goal of the project.
 
@@ -827,7 +827,7 @@ In this section, we will discuss the results and adaptations we have made based 
 
 
 == Initialization
-For the initialization, we use a hyperparameter for the number of Gaussians that will be spawned. The color parameters of $phi_0$ will be initialized with a normal distribution $N(0,1)$, for $phi_1$ and $phi_2$, this is $N(0,0.1)$. I.e. $c^(0 j)_k ~ N(0, 1)$ and $c^(i j)_k ~ N(0, 1)$ for $i in {1,2}$. This prevents the first and second orders from being too active. The position of the Gaussians is also initialized with $N(0,1)$. The rotational parameter $r$ is generated between 0 and $2 pi$ uniformely. The scaling parameters are also generated with $N(0,1)$ but immediately shifted down by $-4$, in other words $s_1, s_2 ~ N(-4, 1)$. If this is not done, the Gaussians will overlap too much and fight against each other, resulting in streaks. This can be seen in @initialization.
+For the initialization, we use a hyperparameter for the number of Gaussians that will be spawned. The color parameters of $phi_0$ will be initialized with a normal distribution $N(0,1)$, for $phi_1$ and $phi_2$, this is $N(0,0.1)$. I.e. $c^(0,j)_k ~ N(0, 1)$ and $c^(i,j)_k ~ N(0, 1)$ for $i in {1,2}$. This prevents the first and second orders from being too active. The position of the Gaussians is also initialized with $N(0,1)$. The rotational parameter $r$ is generated between 0 and $2 pi$ uniformely. The scaling parameters are also generated with $N(0,1)$ but immediately shifted down by $-4$, in other words $s_1, s_2 ~ N(-4, 1)$. If this is not done, the Gaussians will overlap too much and fight against each other, resulting in streaks. This can be seen in @initialization.
 
 #figure(
   caption: [Comparing the different initialization techniques. All representations use 1500 Gaussians, 100x100.],
@@ -977,7 +977,7 @@ You will see the artifacts in the right image. These are not visible in the 100x
 
 The problem with these subpixel Gaussians is that they will still contain information in the tokens. To keep these tokens pure and as close to the original image as possible, we want to remove this. 
 
-To already penalize this in the training process, we will add the following loss function $L_"sizing" = exp( -(s_1 + s_2) -8) * lambda_"sizing"$ averaged over all Gaussians to the loss. Where $lambda_"sizing"$ determines how much influence this loss function has. 
+To already penalize this in the training process, we will add the following loss function $L_"sizing" = exp( -(s_1 + s_2) -8) dot lambda_"sizing"$ averaged over all Gaussians to the loss. Where $lambda_"sizing"$ determines how much influence this loss function has. 
 
 The effect of anisotropic Gaussians is fairly similar, as can be seen below.
 
@@ -1024,7 +1024,7 @@ $L_"anisotropy" = |s_1 - s_2| dot lambda_"anisotropy"$ averaged over all Gaussia
 The final loss is then defined as 
 $
  L &= L_"image" + L_"anisotropy" + L_"sizing"  \
-  &= lambda||f - hat(f)|| + (1 - lambda) * (1 - text("SSIM")(f, hat(f))) +  |s_1 + s_2| * lambda_"anisotropy" + exp( -(s_1 + s_2) -8) * lambda_"sizing"
+  &= lambda||f - hat(f)|| + (1 - lambda) dot (1 - text("SSIM")(f, hat(f))) +  |s_1 + s_2| dot lambda_"anisotropy" + exp( -(s_1 + s_2) -8) dot lambda_"sizing"
 $ 
 with $lambda_"anisotropy"$ and $lambda_"sizing"$ are both set to 0.1, $lambda$ is set to 0.9.
 
@@ -1129,7 +1129,7 @@ Furthermore, going back to @amount-of-gaussians, we can compare the start and en
   table(
     columns: (auto, auto, auto),
     inset: 8pt,
-    align: center,
+    align: (left, right, right),
     table.header(
       [], [*Start Gaussians*], [*End Gaussians*],
     ),

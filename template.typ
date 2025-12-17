@@ -212,7 +212,7 @@
   // Using headcount:
   // show heading: reset-counter(counter(math.equation))
   // set math.equation(numbering: dependent-numbering("(1.1)"))
-  set math.equation(supplement: none)
+  set math.equation(supplement: "Equation")
   // show math.equation: box // no line breaks in inline math
 
   if lines {
