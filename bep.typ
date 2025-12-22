@@ -1024,7 +1024,7 @@ $L_"anisotropy" = |s_1 - s_2| dot lambda_"anisotropy"$ averaged over all Gaussia
 The final loss is then defined as 
 $
  L &= L_"image" + L_"anisotropy" + L_"sizing"  \
-  &= lambda||f - hat(f)|| + (1 - lambda) dot (1 - text("SSIM")(f, hat(f))) +  |s_1 + s_2| dot lambda_"anisotropy" + exp( -(s_1 + s_2) -8) dot lambda_"sizing"
+  &= lambda||f - hat(f)|| + (1 - lambda) dot (1 - text("SSIM")(f, hat(f))) +  |s_1 - s_2| dot lambda_"anisotropy" + exp( -(s_1 + s_2) -8) dot lambda_"sizing"
 $ 
 with $lambda_"anisotropy"$ and $lambda_"sizing"$ are both set to 0.1, $lambda$ is set to 0.9.
 
