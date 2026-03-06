@@ -9,7 +9,7 @@
   scope: "parent",
   float: true,
   text(1.4em, weight: "bold", fill: rgb("#c92127"))[
- An effecient and geometric method to visualize \ for machine learning \
+ An efficient and geometric method to visualize \ for machine learning \
   ] + text[_Victor Klomp, Bachelor final project_ \ Eindhoven University of Technology, ] + datetime.today().display("[month repr:long], [year]"),
 )
 
